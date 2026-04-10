@@ -1,11 +1,13 @@
 package med.voll.api.domain.medico;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import med.voll.api.domain.endereco.DadosEndereco;
-import org.antlr.v4.runtime.misc.NotNull;
 
 public record DadosAtualizacaoMedico(
         @NotNull
-        Long id ,
+        @Schema(example = "1")
+        Long id,
         String nome,
         String telefone,
         DadosEndereco endereco) {

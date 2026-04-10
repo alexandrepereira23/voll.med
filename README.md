@@ -1,10 +1,10 @@
-# 🏥 Voll.med API
+# Voll.med API
 
-API REST para gerenciamento de uma clínica médica fictícia chamada **Voll.med**. Permite o cadastro e gerenciamento de médicos, pacientes e consultas, com autenticação de usuários.
+API REST para gerenciamento de uma clínica médica fictícia chamada **Voll.med**. Permite o cadastro e gerenciamento de médicos, pacientes e consultas, com autenticação JWT e controle de acesso por perfis.
 
 ---
 
-## 🚀 Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 | Tecnologia | Versão | Descrição |
 |---|---|---|
@@ -17,59 +17,72 @@ API REST para gerenciamento de uma clínica médica fictícia chamada **Voll.med
 | Flyway | — | Migrations do banco de dados |
 | MySQL | 8.0 | Banco de dados relacional |
 | Lombok | — | Redução de código boilerplate |
-| Spring DevTools | — | Reload automático em desenvolvimento |
 | Docker / Docker Compose | — | Containerização |
 | Maven | 3.9 | Gerenciador de build |
 
 ---
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```
 src/
 └── main/
     ├── java/med/voll/api/
-    │   ├── ApiApplication.java         # Classe principal
-    │   ├── controller/                 # Endpoints da API
-    │   │   ├── AutenticacaoController.java
-    │   │   ├── ConsultaController.java
-    │   │   ├── MedicoController.java
-    │   │   └── PacientesController.java
-    │   ├── domain/                     # Regras de negócio e entidades
+    │   ├── ApiApplication.java
+    │   ├── controller/              # Endpoints da API
+    │   ├── domain/                  # Entidades e regras de negócio
     │   │   ├── consulta/
     │   │   ├── endereco/
     │   │   ├── medico/
     │   │   ├── paciente/
     │   │   └── usuario/
-    │   ├── infra/                      # Configurações de infraestrutura
-    │   └── Exception/                  # Tratamento de erros
+    │   ├── exception/               # Exceções de domínio
+    │   ├── infra/
+    │   │   ├── exception/           # Handler global de erros
+    │   │   └── security/            # Filtros JWT e configuração Spring Security
+    │   └── service/                 # Camada de serviços
     └── resources/
-        ├── application.properties      # Configurações da aplicação
-        └── db/migration/               # Scripts SQL do Flyway (V1 a V7)
+        ├── application.properties
+        └── db/migration/            # Scripts Flyway (V1 a V8)
 ```
 
 ---
 
-## ⚙️ Pré-requisitos
+## Pré-requisitos
 
 - **Java 21** ou superior
 - **Maven 3.9+**
-- **Docker** e **Docker Compose** (para subir o banco de dados)
+- **Docker** e **Docker Compose**
 
 ---
 
-## 🐳 Configuração com Docker
+## Configuração
 
-### 1. Variáveis de Ambiente
+### 1. Variáveis de ambiente
 
-Crie um arquivo `.env` na raiz do projeto com o seguinte conteúdo:
+Copie o arquivo de exemplo e preencha os valores:
 
-```env
-DB_HOST=localhost
-DB_PORT=3307
-DB_NAME=vollmed_api
-DB_USER=root
-DB_PASSWORD=sua_senha_aqui
+```bash
+cp .env.example .env
+```
+
+| Variável | Obrigatória | Padrão | Descrição |
+|----------|-------------|--------|-----------|
+| `DB_HOST` | Não | `localhost` | Host do banco de dados |
+| `DB_PORT` | Não | `3307` | Porta do banco de dados |
+| `DB_NAME` | Não | `vollmed_api` | Nome do banco de dados |
+| `DB_USER` | Não | `root` | Usuário do banco |
+| `DB_PASSWORD` | **Sim** | — | Senha do banco |
+| `MYSQL_ROOT_PASSWORD` | **Sim** | — | Senha root do MySQL (Docker Compose) |
+| `JWT_SECRET` | **Sim** | — | Chave secreta para assinar tokens JWT (min. 32 chars) |
+| `TOKEN_EXPIRACAO_HORAS` | Não | `2` | Expiração do JWT em horas |
+| `ADMIN_LOGIN` | Não | `admin@vollmed.com` | Login do admin inicial |
+| `ADMIN_PASSWORD` | **Sim** | — | Senha do admin inicial (min. 8 chars) |
+
+Para gerar um `JWT_SECRET` seguro:
+
+```bash
+openssl rand -base64 32
 ```
 
 ### 2. Subir o banco de dados
@@ -78,71 +91,95 @@ DB_PASSWORD=sua_senha_aqui
 docker-compose up -d
 ```
 
-Isso iniciará um container MySQL 8.0 na porta **3307** com o banco `vollmed_api`.
+Inicia um container MySQL 8.0 na porta **3307**.
 
 ---
 
-## ▶️ Como Executar
-
-### Opção 1 — Localmente com Maven
+## Como Executar
 
 ```bash
 # Clone o repositório
 git clone <url-do-repositorio>
 cd api-voll.med
 
-# Certifique-se de que o banco de dados está rodando via Docker
+# Configure as variáveis de ambiente
+cp .env.example .env
+# edite o .env com seus valores
+
+# Suba o banco
 docker-compose up -d
 
 # Execute a aplicação
 ./mvnw spring-boot:run
 ```
 
-### Opção 2 — Via Docker (build completo)
-
-```bash
-# Build da imagem Docker
-docker build -t api-voll-med .
-
-# Execute o container
-docker run -p 8080:8080 --env-file .env api-voll-med
-```
-
 A API ficará disponível em: **http://localhost:8080**
+
+A documentação Swagger estará em: **http://localhost:8080/swagger-ui.html**
 
 ---
 
-## 📌 Endpoints da API
+## Perfis de Usuário
 
-> **Nota:** Todos os endpoints (exceto `/login`) requerem autenticação.
+| Perfil | Descrição |
+|--------|-----------|
+| `ROLE_ADMIN` | Administrador — pode cadastrar novos usuários |
+| `ROLE_FUNCIONARIO` | Funcionário — acesso completo à API |
+| `ROLE_MEDICO` | Médico — vê apenas suas próprias consultas |
 
-### 🔐 Autenticação
+### Primeiro acesso (admin inicial)
 
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| `POST` | `/login` | Realiza login de usuário |
+Na primeira inicialização, a aplicação cria automaticamente um usuário admin com as credenciais definidas em `ADMIN_LOGIN` e `ADMIN_PASSWORD`. Se `ADMIN_PASSWORD` não estiver definido, o admin não é criado e um aviso é exibido no log.
 
-**Body (JSON):**
+Esse processo é idempotente: se já existir um admin no banco, nada acontece.
+
+---
+
+## Endpoints da API
+
+### Autenticação
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `POST` | `/auth/login` | Público | Autentica o usuário e retorna o JWT |
+| `POST` | `/auth/cadastro` | `ROLE_ADMIN` | Cria um novo usuário (`ROLE_FUNCIONARIO` ou `ROLE_MEDICO`) |
+
+**Login:**
 ```json
+POST /auth/login
 {
-  "login": "usuario@email.com",
-  "senha": "senha123"
+  "login": "admin@vollmed.com",
+  "senha": "suaSenha"
 }
 ```
 
+**Cadastro de usuário (requer token de admin):**
+```json
+POST /auth/cadastro
+Authorization: Bearer <token>
+
+{
+  "login": "funcionario@vollmed.com",
+  "senha": "Senha123!",
+  "role": "ROLE_FUNCIONARIO"
+}
+```
+
+> `role` aceita: `ROLE_FUNCIONARIO` ou `ROLE_MEDICO`. Não é possível criar outro `ROLE_ADMIN` por esta rota.
+
 ---
 
-### 👨‍⚕️ Médicos
+### Médicos
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | `POST` | `/medicos` | Cadastra um novo médico |
-| `GET` | `/medicos` | Lista médicos ativos (paginado, ordenado por nome) |
-| `GET` | `/medicos/{id}` | Detalha um médico específico |
+| `GET` | `/medicos` | Lista médicos ativos (paginado) |
+| `GET` | `/medicos/{id}` | Detalha um médico |
 | `PUT` | `/medicos` | Atualiza dados de um médico |
 | `DELETE` | `/medicos/{id}` | Inativa um médico (exclusão lógica) |
 
-**Exemplo de cadastro (POST /medicos):**
+**Exemplo de cadastro:**
 ```json
 {
   "nome": "Dr. João Silva",
@@ -162,17 +199,17 @@ A API ficará disponível em: **http://localhost:8080**
 
 ---
 
-### 🧑‍🤝‍🧑 Pacientes
+### Pacientes
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | `POST` | `/pacientes` | Cadastra um novo paciente |
-| `GET` | `/pacientes` | Lista pacientes ativos (paginado, ordenado por nome) |
-| `GET` | `/pacientes/{id}` | Detalha um paciente específico |
+| `GET` | `/pacientes` | Lista pacientes ativos (paginado) |
+| `GET` | `/pacientes/{id}` | Detalha um paciente |
 | `PUT` | `/pacientes` | Atualiza dados de um paciente |
 | `DELETE` | `/pacientes/{id}` | Inativa um paciente (exclusão lógica) |
 
-**Exemplo de cadastro (POST /pacientes):**
+**Exemplo de cadastro:**
 ```json
 {
   "nome": "Maria Oliveira",
@@ -191,15 +228,15 @@ A API ficará disponível em: **http://localhost:8080**
 
 ---
 
-### 📅 Consultas
+### Consultas
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
 | `POST` | `/consultas` | Agenda uma nova consulta |
-| `GET` | `/consultas` | Lista consultas ativas (paginado, ordenado por data) |
-| `DELETE` | `/consultas` | Cancela uma consulta agendada |
+| `GET` | `/consultas` | Lista consultas ativas (paginado) |
+| `DELETE` | `/consultas` | Cancela uma consulta |
 
-**Exemplo de agendamento (POST /consultas):**
+**Agendamento:**
 ```json
 {
   "idPaciente": 1,
@@ -208,7 +245,7 @@ A API ficará disponível em: **http://localhost:8080**
 }
 ```
 
-**Exemplo de cancelamento (DELETE /consultas):**
+**Cancelamento:**
 ```json
 {
   "idConsulta": 1,
@@ -216,14 +253,14 @@ A API ficará disponível em: **http://localhost:8080**
 }
 ```
 
+> `ROLE_MEDICO` vê apenas as consultas vinculadas ao seu próprio cadastro.
+
 ---
 
-## 🗄️ Banco de Dados — Migrations Flyway
+## Banco de Dados — Migrations Flyway
 
-As migrations são aplicadas automaticamente na inicialização:
-
-| Arquivo | Descrição |
-|---------|-----------|
+| Migration | Descrição |
+|-----------|-----------|
 | `V1` | Criação da tabela `medicos` |
 | `V2` | Adição da coluna `telefone` em médicos |
 | `V3` | Criação da tabela `pacientes` |
@@ -231,23 +268,29 @@ As migrations são aplicadas automaticamente na inicialização:
 | `V5` | Adição da coluna `ativo` em pacientes |
 | `V6` | Criação da tabela `consultas` |
 | `V7` | Criação da tabela `usuarios` |
+| `V8` | Constraint `UNIQUE` na coluna `login` de usuários |
 
 ---
 
-## 🔒 Segurança
+## Segurança
 
-A aplicação utiliza **Spring Security**. O endpoint `/login` é público; os demais requerem autenticação válida.
-
----
-
-## 📝 Observações
-
-- A exclusão de médicos, pacientes e consultas é **lógica** (soft delete), utilizando o campo `ativo`.
-- A listagem padrão exibe **10 registros por página**.
-- As mensagens de erro não expõem o stack trace ao cliente (`server.error.include-stacktrace=never`).
+- Autenticação via **JWT** (Bearer Token)
+- Senhas hasheadas com **BCrypt**
+- **Rate limiting** em `/auth/*`: máximo 10 tentativas por IP em 15 minutos (HTTP 429)
+- Headers de segurança: `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Cache-Control`, `Referrer-Policy`
+- Mensagens de erro sem stack trace ou detalhes internos
+- Swagger desabilitado em produção (`springdoc.swagger-ui.enabled=false`)
 
 ---
 
-## 📄 Licença
+## Observações
+
+- A exclusão de médicos, pacientes e consultas é **lógica** (soft delete via campo `ativo`).
+- A listagem padrão retorna **10 registros por página**.
+- O `JWT_SECRET` sem valor configurado impede a inicialização da aplicação (falha intencional).
+
+---
+
+## Licença
 
 Projeto desenvolvido para fins de aprendizado no curso da **Alura**.

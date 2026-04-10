@@ -1,5 +1,6 @@
 package med.voll.api.domain.consulta;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 
@@ -7,13 +8,15 @@ import java.time.LocalDateTime;
 
 public record DadosAgendamentoConsulta(
         @NotNull
+        @Schema(example = "1")
         Long idPaciente,
 
-        // O médico é opcional na sua regra, então não deve ter @NotNull
+        @Schema(example = "1")
         Long idMedico,
 
         @NotNull
-        @Future // Garante que a data seja no futuro (regra de negócio)
+        @Future
+        @Schema(example = "2024-12-20T10:00:00")
         LocalDateTime data
 ) {
 }

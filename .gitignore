@@ -32,5 +32,18 @@ build/
 ### VS Code ###
 .vscode/
 
-### Environment Variables
+### Environment Variables — nunca commitar o .env real
 .env
+.env.local
+.env.*.local
+
+### Logs ###
+logs/
+*.log
+
+###Claude###
+.claude
+
+### OS ###
+.DS_Store
+Thumbs.db

@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import med.voll.api.domain.usuario.Usuario;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -15,6 +17,11 @@ public interface MedicoRepository extends JpaRepository<Medico, Long> {
 
     // Método para listagem paginada (já estava correto)
     Page<Medico> findAllByAtivoTrue(Pageable paginacao);
+
+    @Query("SELECT m FROM Medico m WHERE m.ativo = true AND m.usuario.id = :usuarioId")
+    Page<Medico> findAllByAtivoTrueAndUsuarioId(Pageable paginacao, @Param("usuarioId") Long usuarioId);
+
+    Optional<Medico> findByUsuario(Usuario usuario);
 
     /**
      * Busca um médico ATIVO que não possua consulta agendada na data/hora informada,

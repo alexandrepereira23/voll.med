@@ -1,26 +1,29 @@
 package med.voll.api.domain.consulta;
 
-import med.voll.api.Exception.ValidacaoException; // Import corrigido
+import med.voll.api.exception.ValidacaoException;
 import med.voll.api.domain.medico.Medico;
 import med.voll.api.domain.medico.MedicoRepository;
 import med.voll.api.domain.paciente.PacienteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
-import java.util.Optional; // Import necessário para o Optional
+import java.util.Optional;
 
 @Service
 public class AgendaDeConsultas {
-    @Autowired
-    private ConsultaRepository consultaRepository;
 
-    @Autowired
-    private MedicoRepository medicoRepository;
+    private final ConsultaRepository consultaRepository;
+    private final MedicoRepository medicoRepository;
+    private final PacienteRepository pacienteRepository;
 
-    @Autowired
-    private PacienteRepository pacienteRepository;
+    public AgendaDeConsultas(ConsultaRepository consultaRepository,
+                             MedicoRepository medicoRepository,
+                             PacienteRepository pacienteRepository) {
+        this.consultaRepository = consultaRepository;
+        this.medicoRepository = medicoRepository;
+        this.pacienteRepository = pacienteRepository;
+    }
 
     public DadosDetalhamentoConsulta agendar(DadosAgendamentoConsulta dados) {
 
