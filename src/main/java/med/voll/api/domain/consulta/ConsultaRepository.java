@@ -14,6 +14,8 @@ public interface ConsultaRepository extends JpaRepository<Consulta, Long> {
 
     boolean existsByMedicoIdAndDataHoraAndAtivoTrue(Long idMedico, LocalDateTime dataHora);
 
+    boolean existsByConsultaOrigemId(Long consultaOrigemId);
+
     @Query("SELECT c FROM Consulta c JOIN FETCH c.medico JOIN FETCH c.paciente WHERE c.ativo = true")
     Page<Consulta> findAllByAtivoTrue(Pageable paginacao);
 

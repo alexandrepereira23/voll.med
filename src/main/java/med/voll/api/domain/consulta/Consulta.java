@@ -32,31 +32,45 @@ public class Consulta {
     private LocalDateTime dataHora;
 
     // Atributo para gerenciar o cancelamento da consulta
-    private Boolean ativo = true;
+    private boolean ativo = true;
 
     // Atributo para armazenar o motivo do cancelamento
     @Enumerated(EnumType.STRING)
     private MotivoCancelamento motivoCancelamento; // Deve ser uma ENUM
 
+    @Enumerated(EnumType.STRING)
+    private PrioridadeConsulta prioridade;
 
-    // NOVO CONSTRUTOR para ser usado no Service.
-    // Ele inicializa apenas os campos que vêm do agendamento
-    public Consulta(Medico medico, Paciente paciente, LocalDateTime dataHora) {
+    @Enumerated(EnumType.STRING)
+    private TipoConsulta tipo;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "consulta_origem_id")
+    private Consulta consultaOrigem;
+
+    @Enumerated(EnumType.STRING)
+    private CanceladoPor canceladoPor;
+
+    public Consulta(Medico medico, Paciente paciente, LocalDateTime dataHora, PrioridadeConsulta prioridade) {
         this.medico = medico;
         this.paciente = paciente;
         this.dataHora = dataHora;
-        this.ativo = true; // Valor padrão
-        this.motivoCancelamento = null; // Valor padrão
+        this.prioridade = prioridade;
+        this.tipo = TipoConsulta.NORMAL;
+        this.ativo = true;
     }
 
-    /**
-     * NOVO MÉTODO: Marca a consulta como inativa (cancelada) e registra o motivo.
-     * Esta é a "exclusão lógica" da sua regra de negócio para consultas.
-     * @param motivo O motivo do cancelamento, conforme a ENUM.
-     */
-    public void cancelar(MotivoCancelamento motivo) {
-        this.ativo = false; // Torna a consulta inativa
-        this.motivoCancelamento = motivo; // Registra o motivo do cancelamento
+    public Consulta(Medico medico, Paciente paciente, LocalDateTime dataHora,
+                    PrioridadeConsulta prioridade, Consulta consultaOrigem) {
+        this(medico, paciente, dataHora, prioridade);
+        this.consultaOrigem = consultaOrigem;
+        this.tipo = TipoConsulta.RETORNO;
+    }
+
+    public void cancelar(MotivoCancelamento motivo, CanceladoPor canceladoPor) {
+        this.ativo = false;
+        this.motivoCancelamento = motivo;
+        this.canceladoPor = canceladoPor;
     }
 
 }

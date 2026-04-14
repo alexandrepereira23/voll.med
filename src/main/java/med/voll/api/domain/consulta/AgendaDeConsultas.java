@@ -50,9 +50,16 @@ public class AgendaDeConsultas {
         }
 
         // 2. Validações de Regras de Negócio
+        var prioridade = dados.prioridade() != null ? dados.prioridade() : PrioridadeConsulta.ROTINA;
         validarHorarioFuncionamento(dados.data());
-        validarAntecedenciaMinima(dados.data());
-        validarPacienteComOutraConsultaNoDia(dados);
+        validarAntecedenciaMinima(dados.data(), prioridade);
+
+        Consulta consultaOrigem = null;
+        if (dados.consultaOrigemId() != null) {
+            consultaOrigem = validarRetorno(dados.consultaOrigemId(), dados.data());
+        } else {
+            validarPacienteComOutraConsultaNoDia(dados);
+        }
 
         // Escolhe o médico (se não foi informado, será aleatório)
         if (medico == null) {
@@ -67,7 +74,9 @@ public class AgendaDeConsultas {
         }
 
         // 3. Persistência
-        var consulta = new Consulta(medico, paciente.get(), dados.data());
+        var consulta = consultaOrigem != null
+                ? new Consulta(medico, paciente.get(), dados.data(), prioridade, consultaOrigem)
+                : new Consulta(medico, paciente.get(), dados.data(), prioridade);
         consultaRepository.save(consulta);
 
         // 4. Retorno
@@ -77,19 +86,14 @@ public class AgendaDeConsultas {
     // ------------------ MÉTODO DE CANCELAMENTO ------------------
 
     public void cancelar(DadosCancelamentoConsulta dados) {
-        if (!consultaRepository.existsById(dados.idConsulta())) {
-            throw new ValidacaoException("ID da consulta informado não existe!");
-        }
+        var consulta = consultaRepository.findById(dados.idConsulta())
+                .orElseThrow(() -> new ValidacaoException("ID da consulta informado não existe!"));
 
-        var consulta = consultaRepository.getReferenceById(dados.idConsulta());
-
-        // Validação: Somente poderá ser cancelada com antecedência mínima de 24 horas.
         if (consulta.getDataHora().isBefore(LocalDateTime.now().plusHours(24))) {
             throw new ValidacaoException("Consulta somente pode ser cancelada com antecedência mínima de 24 horas.");
         }
 
-        // Se a validação passar:
-        consulta.cancelar(dados.motivo()); // Marca como inativo e registra o motivo
+        consulta.cancelar(dados.motivo(), dados.canceladoPor());
     }
 
 
@@ -110,14 +114,15 @@ public class AgendaDeConsultas {
         }
     }
 
-    private void validarAntecedenciaMinima(LocalDateTime data) {
-        // ... (lógica de Antecedência de 30 minutos - Sem alteração) ...
+    private void validarAntecedenciaMinima(LocalDateTime data, PrioridadeConsulta prioridade) {
+        if (prioridade == PrioridadeConsulta.URGENCIA) {
+            return;
+        }
         var agora = LocalDateTime.now();
-        var trintaMinutosAFrente = agora.plusMinutes(30);
-
-        // 2. Consultas devem ser agendadas com antecedência mínima de 30 minutos
-        if (data.isBefore(trintaMinutosAFrente)) {
-            throw new ValidacaoException("Consulta deve ser agendada com antecedência mínima de 30 minutos.");
+        int minutosMinimos = prioridade == PrioridadeConsulta.PRIORITARIO ? 10 : 30;
+        if (data.isBefore(agora.plusMinutes(minutosMinimos))) {
+            throw new ValidacaoException(
+                    "Consulta deve ser agendada com antecedência mínima de " + minutosMinimos + " minutos.");
         }
     }
 
@@ -147,6 +152,25 @@ public class AgendaDeConsultas {
         if (!temDisponibilidade) {
             throw new ValidacaoException("Médico não possui disponibilidade cadastrada no dia/horário solicitado.");
         }
+    }
+
+    private Consulta validarRetorno(Long consultaOrigemId, LocalDateTime dataRetorno) {
+        var origem = consultaRepository.findById(consultaOrigemId)
+                .orElseThrow(() -> new ValidacaoException("Consulta de origem não encontrada!"));
+
+        if (!origem.isAtivo()) {
+            throw new ValidacaoException("A consulta de origem está cancelada e não permite retorno.");
+        }
+
+        if (dataRetorno.isAfter(origem.getDataHora().plusDays(30))) {
+            throw new ValidacaoException("Retorno deve ocorrer em até 30 dias após a consulta original.");
+        }
+
+        if (consultaRepository.existsByConsultaOrigemId(consultaOrigemId)) {
+            throw new ValidacaoException("Já existe um retorno agendado para esta consulta.");
+        }
+
+        return origem;
     }
 
     private Medico escolherMedicoAleatorio(DadosAgendamentoConsulta dados) {

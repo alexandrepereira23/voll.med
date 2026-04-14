@@ -17,6 +17,12 @@ public record DadosAgendamentoConsulta(
         @NotNull
         @Future
         @Schema(example = "2024-12-20T10:00:00")
-        LocalDateTime data
+        LocalDateTime data,
+
+        @Schema(example = "ROTINA", description = "ROTINA (30 min), PRIORITARIO (10 min) ou URGENCIA (sem restrição). Padrão: ROTINA")
+        PrioridadeConsulta prioridade,
+
+        @Schema(example = "1", description = "ID da consulta original. Quando informado, agenda um retorno (não consome a cota diária do paciente)")
+        Long consultaOrigemId
 ) {
 }

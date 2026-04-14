@@ -13,12 +13,24 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 1 | Paciente deve existir e estar ativo | 400 — Paciente não existe ou está inativo |
 | 2 | Médico informado deve existir e estar ativo | 400 — Médico não existe ou está inativo |
 | 3 | Clínica funciona Seg–Sáb, das 07h às 19h | 400 — Horário fora do funcionamento |
-| 4 | Agendamento com mínimo 30 min de antecedência | 400 — Antecedência mínima não respeitada |
+| 4 | Antecedência mínima conforme prioridade: `ROTINA`=30min, `PRIORITARIO`=10min, `URGENCIA`=sem restrição | 400 — Antecedência mínima não respeitada |
 | 5 | Paciente não pode ter duas consultas no mesmo dia | 400 — Paciente já possui consulta no dia |
 | 6 | Médico informado deve ter disponibilidade no dia/horário | 400 — Médico sem disponibilidade cadastrada |
 | 7 | Médico não pode ter duas consultas no mesmo horário | 400 — Médico ocupado no horário |
 | 8 | Se médico não for informado, sistema escolhe aleatório com disponibilidade real | — |
 | 9 | Se não houver médico disponível, agendamento é recusado | 400 — Nenhum médico disponível |
+| 10 | Campo `prioridade` é opcional — omitido equivale a `ROTINA` | — |
+
+### Retorno de Consulta
+
+| # | Regra | Erro |
+|---|-------|------|
+| 1 | Informar `consultaOrigemId` no agendamento para criar um retorno | 400 — Consulta de origem não encontrada |
+| 2 | Consulta de origem deve existir e estar ativa | 400 |
+| 3 | Retorno deve ocorrer em até 30 dias após a consulta original | 400 |
+| 4 | Cada consulta pode ter no máximo um retorno | 400 |
+| 5 | Retorno não consome a cota diária do paciente (ignora regra de uma consulta por dia) | — |
+| 6 | Campo `tipo` na resposta indica `NORMAL` ou `RETORNO`; `consultaOrigemId` indica o vínculo | — |
 
 ### Cancelamento (`AgendaDeConsultas.cancelar`)
 
@@ -26,6 +38,7 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 |---|-------|------|
 | 1 | Consulta deve existir | 400 — ID da consulta não existe |
 | 2 | Cancelamento com mínimo 24h de antecedência | 400 — Antecedência mínima não respeitada |
+| 3 | Campo `canceladoPor` opcional: `PACIENTE` ou `CLINICA` | — |
 
 ---
 
@@ -51,6 +64,34 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 5 | Edição permitida somente dentro de 24h após o registro | 422 — Janela de edição expirada |
 | 6 | `ROLE_MEDICO` acessa apenas prontuários de suas próprias consultas | 403 |
 | 7 | `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura a todos os prontuários | — |
+| 8 | Exclusão é lógica (campo `ativo = false`), restrita a `ROLE_ADMIN` | — |
+
+---
+
+## Prescrições
+
+| # | Regra | Erro |
+|---|-------|------|
+| 1 | Prontuário referenciado deve existir e estar ativo | 404 |
+| 2 | Apenas o médico responsável pelo prontuário pode criar prescrições | 403 |
+| 3 | `ROLE_MEDICO` acessa apenas prescrições de seus próprios prontuários | 403 |
+| 4 | `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura a todas as prescrições | — |
+| 5 | Receita `SIMPLES` tem validade de 30 dias; `ESPECIAL` de 60 dias (calculado automaticamente) | — |
+| 6 | Toda prescrição deve ter ao menos um item | 400 |
+
+---
+
+## Atestados
+
+| # | Regra | Erro |
+|---|-------|------|
+| 1 | Prontuário referenciado deve existir e estar ativo | 404 |
+| 2 | Apenas o médico responsável pelo prontuário pode emitir atestados | 403 |
+| 3 | `ROLE_MEDICO` acessa apenas atestados vinculados aos seus prontuários | 403 |
+| 4 | `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura a todos os atestados | — |
+| 5 | `diasAfastamento` deve ser no mínimo 1 | 400 |
+| 6 | `cid10` e `observacoes` são opcionais | — |
+| 7 | `dataEmissao` é preenchida automaticamente com a data atual | — |
 | 8 | Exclusão é lógica (campo `ativo = false`), restrita a `ROLE_ADMIN` | — |
 
 ---
@@ -91,3 +132,9 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | `PUT /prontuarios` | — | — | ✅ (seu, em 24h) |
 | `GET /prontuarios` | ✅ | ✅ | ✅ (apenas os seus) |
 | `DELETE /prontuarios/{id}` | ✅ | — | — |
+| `POST /prescricoes` | — | — | ✅ (do seu prontuário) |
+| `GET /prescricoes/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
+| `GET /prescricoes/prontuario/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
+| `POST /atestados` | — | — | ✅ (do seu prontuário) |
+| `GET /atestados/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
+| `GET /atestados/paciente/{id}` | ✅ | ✅ | ✅ (apenas os seus) |

@@ -16,6 +16,7 @@ Este documento registra as funcionalidades planejadas para tornar o sistema util
 | Documentação | Swagger habilitado em dev |
 | **Prontuário Eletrônico** | **Implementado (V12)** |
 | **Agenda de Disponibilidade** | **Implementado (V13)** |
+| **Prescrição / Receita Médica** | **Implementado (V14)** |
 
 ---
 
@@ -72,7 +73,7 @@ DELETE /medicos/{id}/disponibilidade/{disponibilidadeId} → remover horário
 
 ---
 
-### 1.3 Prescrição / Receita Médica
+### ✅ 1.3 Prescrição / Receita Médica — IMPLEMENTADO
 
 Vinculada ao prontuário. Sem prescrição, o sistema não tem valor clínico real.
 
@@ -93,7 +94,7 @@ GET    /prescricoes/prontuario/{id} → listar prescrições de um prontuário
 
 ## Prioridade 2 — Importante (diferencia o sistema)
 
-### 2.1 Triagem com Prioridade
+### ✅ 2.1 Triagem com Prioridade — IMPLEMENTADO
 
 Ao agendar uma consulta, classificar a urgência. Afeta a ordem de atendimento e pode flexibilizar a regra de antecedência mínima.
 
@@ -106,7 +107,7 @@ Ao agendar uma consulta, classificar a urgência. Afeta a ordem de atendimento e
 
 ---
 
-### 2.2 Retorno de Consulta
+### ✅ 2.2 Retorno de Consulta — IMPLEMENTADO
 
 Consultas de retorno vinculadas à consulta original, com regras próprias de negócio.
 
@@ -121,7 +122,7 @@ Consultas de retorno vinculadas à consulta original, com regras próprias de ne
 
 ---
 
-### 2.3 Atestado Médico
+### ✅ 2.3 Atestado Médico — IMPLEMENTADO
 
 Geração de atestados vinculados ao prontuário.
 
@@ -295,9 +296,9 @@ GET /ia/resumo-historico/{paciente_id}
 | `V1`–`V11` | Base do sistema (médicos, pacientes, consultas, usuários) | Aplicado |
 | `V12` | Criar tabela `prontuarios` | Aplicado |
 | `V13` | Criar tabela `disponibilidade_medico` | Aplicado |
-| `V14` | Criar tabela `prescricoes` e `prescricao_itens` | Pendente |
-| `V15` | Adicionar `prioridade` e `tipo` em `consultas` | Pendente |
-| `V16` | Adicionar `consulta_origem_id` e `cancelado_por` em `consultas` | Pendente |
-| `V17` | Criar tabela `atestados` | Pendente |
+| `V14` | Criar tabela `prescricoes` e `prescricao_itens` | Aplicado |
+| `V15` | Adicionar `prioridade` e `tipo` em `consultas` | Aplicado |
+| `V16` | Adicionar `consulta_origem_id` e `cancelado_por` em `consultas` | Aplicado |
+| `V17` | Criar tabela `atestados` | Aplicado |
 | `V18` | Criar tabelas `convenios` e `paciente_convenios`, adicionar `convenio_id` em `consultas` | Pendente |
 | `V19` | Criar tabela `auditoria_prontuario` | Pendente |

@@ -32,7 +32,7 @@ public class ProntuarioService {
         var consulta = consultaRepository.findById(dados.consultaId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Consulta não encontrada"));
 
-        if (!consulta.getAtivo()) {
+        if (!consulta.isAtivo()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Consulta está cancelada");
         }
 
