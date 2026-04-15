@@ -2,13 +2,18 @@ package med.voll.api.domain.consulta;
 
 import jakarta.persistence.*;
 import lombok.*;
+import med.voll.api.domain.convenio.Convenio;
 import med.voll.api.domain.medico.Medico;
 import med.voll.api.domain.paciente.Paciente;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Table(name = "consultas")
 @Entity(name = "Consulta")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -51,6 +56,17 @@ public class Consulta {
     @Enumerated(EnumType.STRING)
     private CanceladoPor canceladoPor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "convenio_id")
+    private Convenio convenio;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime criadoEm;
+
+    @LastModifiedDate
+    private LocalDateTime atualizadoEm;
+
     public Consulta(Medico medico, Paciente paciente, LocalDateTime dataHora, PrioridadeConsulta prioridade) {
         this.medico = medico;
         this.paciente = paciente;
@@ -71,6 +87,10 @@ public class Consulta {
         this.ativo = false;
         this.motivoCancelamento = motivo;
         this.canceladoPor = canceladoPor;
+    }
+
+    public void setConvenio(Convenio convenio) {
+        this.convenio = convenio;
     }
 
 }

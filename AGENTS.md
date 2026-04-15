@@ -26,7 +26,11 @@ docker-compose up -d
 ## Entry Points
 
 - `ApiApplication.java` - main class
-- Controllers: `AutenticacaoController`, `MedicoController`, `PacientesController`, `ConsultaController`
+- Controllers: `AutenticacaoController`, `MedicoController`, `PacientesController`, `ConsultaController`, `DisponibilidadeMedicoController`, `ProntuarioController`, `PrescricaoController`, `AtestadoController`, `ConvenioController`, `ConvenioPacienteController`, `AuditoriaController`
+
+## Migrations applied
+
+V1–V20 (next: V21 for `especialidades` table — enum-to-entity refactor)
 
 ## Gotchas
 
@@ -34,3 +38,4 @@ docker-compose up -d
 - JWT_SECRET defaults to weak `12345678` - override in production
 - MySQL container needs password: `DB_PASSWORD=root` in `.env`
 - Test database uses H2 in-memory (configured in spring-boot-starter-test)
+- `SecurityFillter` and `RateLimitFilter` have `FilterRegistrationBean` disabling auto-registration — never remove them (Spring Security 6.5+ requirement)

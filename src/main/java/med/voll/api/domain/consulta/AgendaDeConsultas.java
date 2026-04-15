@@ -1,5 +1,7 @@
 package med.voll.api.domain.consulta;
 
+import med.voll.api.domain.convenio.Convenio;
+import med.voll.api.domain.convenio.ConvenioRepository;
 import med.voll.api.exception.ValidacaoException;
 import med.voll.api.domain.medico.DisponibilidadeMedicoRepository;
 import med.voll.api.domain.medico.Medico;
@@ -18,15 +20,18 @@ public class AgendaDeConsultas {
     private final MedicoRepository medicoRepository;
     private final PacienteRepository pacienteRepository;
     private final DisponibilidadeMedicoRepository disponibilidadeRepository;
+    private final ConvenioRepository convenioRepository;
 
     public AgendaDeConsultas(ConsultaRepository consultaRepository,
                              MedicoRepository medicoRepository,
                              PacienteRepository pacienteRepository,
-                             DisponibilidadeMedicoRepository disponibilidadeRepository) {
+                             DisponibilidadeMedicoRepository disponibilidadeRepository,
+                             ConvenioRepository convenioRepository) {
         this.consultaRepository = consultaRepository;
         this.medicoRepository = medicoRepository;
         this.pacienteRepository = pacienteRepository;
         this.disponibilidadeRepository = disponibilidadeRepository;
+        this.convenioRepository = convenioRepository;
     }
 
     public DadosDetalhamentoConsulta agendar(DadosAgendamentoConsulta dados) {
@@ -77,6 +82,16 @@ public class AgendaDeConsultas {
         var consulta = consultaOrigem != null
                 ? new Consulta(medico, paciente.get(), dados.data(), prioridade, consultaOrigem)
                 : new Consulta(medico, paciente.get(), dados.data(), prioridade);
+
+        if (dados.convenioId() != null) {
+            Convenio convenio = convenioRepository.findById(dados.convenioId())
+                    .orElseThrow(() -> new ValidacaoException("Convênio informado não encontrado."));
+            if (!convenio.isAtivo()) {
+                throw new ValidacaoException("Convênio informado está inativo.");
+            }
+            consulta.setConvenio(convenio);
+        }
+
         consultaRepository.save(consulta);
 
         // 4. Retorno

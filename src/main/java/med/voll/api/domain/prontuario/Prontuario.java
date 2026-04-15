@@ -5,11 +5,15 @@ import lombok.*;
 import med.voll.api.domain.consulta.Consulta;
 import med.voll.api.domain.medico.Medico;
 import med.voll.api.domain.paciente.Paciente;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Table(name = "prontuarios")
 @Entity(name = "Prontuario")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -45,6 +49,13 @@ public class Prontuario {
     private LocalDateTime dataRegistro;
 
     private boolean ativo;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime criadoEm;
+
+    @LastModifiedDate
+    private LocalDateTime atualizadoEm;
 
     public Prontuario(Consulta consulta, Medico medico, Paciente paciente,
                       String anamnese, String diagnostico, String cid10, String observacoes) {

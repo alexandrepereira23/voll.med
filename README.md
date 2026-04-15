@@ -31,10 +31,12 @@ src/
     │   ├── ApiApplication.java
     │   ├── controller/              # Endpoints da API
     │   ├── domain/                  # Entidades e regras de negócio
+    │   │   ├── atestado/
     │   │   ├── consulta/
     │   │   ├── endereco/
     │   │   ├── medico/              # inclui DisponibilidadeMedico
     │   │   ├── paciente/
+    │   │   ├── prescricao/
     │   │   ├── prontuario/
     │   │   └── usuario/
     │   ├── exception/               # Exceções de domínio
@@ -242,11 +244,14 @@ Authorization: Bearer <token>
 {
   "idPaciente": 1,
   "idMedico": 1,
-  "data": "2025-12-10T10:00:00"
+  "data": "2025-12-10T10:00:00",
+  "prioridade": "ROTINA"
 }
 ```
 
 > `idMedico` é opcional — se omitido, o sistema escolhe automaticamente um médico com disponibilidade cadastrada no horário.
+> `prioridade` aceita: `ROTINA` (padrão, 30 min de antecedência), `PRIORITARIO` (10 min), `URGENCIA` (sem restrição).
+> Para **retorno de consulta**, informe `tipo: "RETORNO"` e `consultaOrigemId`. O retorno deve ocorrer em até 30 dias e não consome a cota diária do paciente.
 
 **Cancelamento:**
 ```json
@@ -310,6 +315,112 @@ Authorization: Bearer <token>
 
 ---
 
+### Prescrições
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `POST` | `/prescricoes` | `ROLE_MEDICO` | Cria prescrição vinculada a um prontuário |
+| `GET` | `/prescricoes/{id}` | Autenticado | Detalha uma prescrição |
+| `GET` | `/prescricoes/prontuario/{id}` | Autenticado | Lista prescrições de um prontuário |
+
+**Criação de prescrição:**
+```json
+{
+  "prontuarioId": 1,
+  "tipo": "SIMPLES",
+  "itens": [
+    {
+      "medicamento": "Dipirona",
+      "dosagem": "500mg",
+      "posologia": "1 comprimido a cada 6h",
+      "duracaoDias": 5
+    }
+  ]
+}
+```
+
+> `tipo` aceita: `SIMPLES` (validade 30 dias) ou `ESPECIAL` (validade 60 dias).
+> Apenas o médico responsável pelo prontuário pode criar prescrições.
+
+---
+
+### Atestados
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `POST` | `/atestados` | `ROLE_MEDICO` | Emite atestado vinculado a um prontuário |
+| `GET` | `/atestados/{id}` | Autenticado | Detalha um atestado |
+| `GET` | `/atestados/paciente/{id}` | Autenticado | Histórico de atestados do paciente |
+
+**Emissão de atestado:**
+```json
+{
+  "prontuarioId": 1,
+  "diasAfastamento": 3,
+  "cid10": "G43",
+  "observacoes": "Repouso recomendado"
+}
+```
+
+> `cid10` e `observacoes` são opcionais.
+> Apenas o médico responsável pelo prontuário pode emitir atestados.
+
+---
+
+### Convênios
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `POST` | `/convenios` | `ROLE_ADMIN` / `ROLE_FUNCIONARIO` | Cadastra um convênio |
+| `GET` | `/convenios` | Autenticado | Lista convênios ativos |
+| `GET` | `/convenios/{id}` | Autenticado | Detalha um convênio |
+| `PUT` | `/convenios/{id}` | `ROLE_ADMIN` / `ROLE_FUNCIONARIO` | Atualiza nome do convênio |
+| `DELETE` | `/convenios/{id}` | `ROLE_ADMIN` | Inativa um convênio |
+
+**Cadastro:**
+```json
+{
+  "nome": "Unimed",
+  "codigoANS": "123456",
+  "tipo": "PLANO"
+}
+```
+
+> `tipo` aceita: `PARTICULAR` ou `PLANO`.
+
+---
+
+### Convênios do Paciente
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `POST` | `/pacientes/{id}/convenios` | `ROLE_ADMIN` / `ROLE_FUNCIONARIO` | Vincula convênio ao paciente |
+| `GET` | `/pacientes/{id}/convenios` | Autenticado | Lista convênios do paciente |
+| `DELETE` | `/pacientes/{id}/convenios/{convId}` | `ROLE_ADMIN` / `ROLE_FUNCIONARIO` | Remove vínculo |
+
+**Vinculação:**
+```json
+{
+  "convenioId": 1,
+  "numeroCarteirinha": "0001234567890",
+  "validade": "2027-12-31"
+}
+```
+
+> Para usar um convênio em uma consulta, informe `convenioId` ao agendar.
+
+---
+
+### Auditoria LGPD
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `GET` | `/auditoria/prontuarios/{id}` | `ROLE_ADMIN` | Log de acessos ao prontuário |
+
+> Registra automaticamente toda operação no `ProntuarioService` (CRIOU, EDITOU, VISUALIZOU) com usuário, data/hora e IP de origem.
+
+---
+
 ## Banco de Dados — Migrations Flyway
 
 | Migration | Descrição |
@@ -327,6 +438,13 @@ Authorization: Bearer <token>
 | `V11` | Adição da coluna `usuario_id` (FK) em médicos |
 | `V12` | Criação da tabela `prontuarios` |
 | `V13` | Criação da tabela `disponibilidade_medico` |
+| `V14` | Criação das tabelas `prescricoes` e `prescricao_itens` |
+| `V15` | Adição de `prioridade` e `tipo` em `consultas` |
+| `V16` | Adição de `consulta_origem_id` e `cancelado_por` em `consultas` |
+| `V17` | Criação da tabela `atestados` |
+| `V18` | Criação das tabelas `convenios` e `convenio_pacientes`, adição de `convenio_id` em `consultas` |
+| `V19` | Criação da tabela `auditoria_prontuario` |
+| `V20` | Adição de colunas de auditoria (`criado_em`, `atualizado_em`) em todas as entidades principais |
 
 ---
 
@@ -338,6 +456,7 @@ Authorization: Bearer <token>
 - Headers de segurança: `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Cache-Control`, `Referrer-Policy`
 - Mensagens de erro sem stack trace ou detalhes internos
 - Swagger desabilitado em produção (`springdoc.swagger-ui.enabled=false`)
+- **Auditoria LGPD**: todo acesso a prontuários é registrado automaticamente via AOP (usuário, ação, IP, data/hora)
 
 ---
 

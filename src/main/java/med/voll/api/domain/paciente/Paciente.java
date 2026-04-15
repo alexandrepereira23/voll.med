@@ -4,9 +4,15 @@ import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import lombok.*;
 import med.voll.api.domain.endereco.Endereco;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Table(name = "pacientes")
 @Entity(name = "Paciente")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,6 +29,13 @@ public class Paciente {
     private Endereco endereco;
 
     private boolean ativo;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime criadoEm;
+
+    @LastModifiedDate
+    private LocalDateTime atualizadoEm;
 
     public Paciente(DadosCadastroPaciente dados) {
      this.ativo = true;

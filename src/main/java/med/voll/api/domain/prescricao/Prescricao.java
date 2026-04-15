@@ -3,13 +3,18 @@ package med.voll.api.domain.prescricao;
 import jakarta.persistence.*;
 import lombok.*;
 import med.voll.api.domain.prontuario.Prontuario;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Table(name = "prescricoes")
 @Entity(name = "Prescricao")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,6 +35,13 @@ public class Prescricao {
     private LocalDate dataEmissao;
     private LocalDate dataValidade;
     private boolean ativo;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime criadoEm;
+
+    @LastModifiedDate
+    private LocalDateTime atualizadoEm;
 
     @OneToMany(mappedBy = "prescricao", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PrescricaoItem> itens = new ArrayList<>();

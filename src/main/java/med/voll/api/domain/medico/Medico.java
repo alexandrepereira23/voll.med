@@ -5,9 +5,15 @@ import jakarta.validation.Valid;
 import lombok.*;
 import med.voll.api.domain.endereco.Endereco;
 import med.voll.api.domain.usuario.Usuario;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Table(name = "medicos")
 @Entity(name = "Medico")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,6 +39,13 @@ public class Medico {
     @OneToOne
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime criadoEm;
+
+    @LastModifiedDate
+    private LocalDateTime atualizadoEm;
 
     public Medico(DadosCadastroMedico dados) {
         this.ativo = true;

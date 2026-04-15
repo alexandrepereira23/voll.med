@@ -10,13 +10,19 @@ Este documento registra as funcionalidades planejadas para tornar o sistema util
 |--------|----------|
 | Médicos | CRUD completo com exclusão lógica |
 | Pacientes | CRUD completo com exclusão lógica |
-| Consultas | Agendamento e cancelamento |
+| Consultas | Agendamento e cancelamento com triagem, retorno e canceladoPor |
 | Usuários | Cadastro com perfis (ADMIN, FUNCIONARIO, MEDICO) |
 | Autenticação | JWT + rate limiting |
 | Documentação | Swagger habilitado em dev |
 | **Prontuário Eletrônico** | **Implementado (V12)** |
 | **Agenda de Disponibilidade** | **Implementado (V13)** |
 | **Prescrição / Receita Médica** | **Implementado (V14)** |
+| **Triagem e Retorno de Consulta** | **Implementado (V15, V16)** |
+| **Atestado Médico** | **Implementado (V17)** |
+| **Convênios / Planos de Saúde** | **Implementado (V18)** |
+| **Auditoria LGPD (Prontuário)** | **Implementado (V19) via AOP** |
+| **Auditoria de Entidades (JPA)** | **Implementado (V20)** |
+| Filtro consultas por médico logado | Implementado |
 
 ---
 
@@ -142,7 +148,7 @@ GET    /atestados/paciente/{id}  → histórico de atestados do paciente
 
 ---
 
-### 2.4 Convênios / Planos de Saúde
+### ✅ 2.4 Convênios / Planos de Saúde — IMPLEMENTADO
 
 Muda completamente a lógica do sistema — sem isso, não há como saber como a consulta será cobrada.
 
@@ -157,7 +163,7 @@ Muda completamente a lógica do sistema — sem isso, não há como saber como a
 
 ---
 
-### 2.5 Auditoria de Acesso ao Prontuário (LGPD)
+### ✅ 2.5 Auditoria de Acesso ao Prontuário (LGPD) — IMPLEMENTADO
 
 Obrigatório para conformidade com a LGPD em sistemas de saúde. Registrar quem acessou qual prontuário e quando.
 
@@ -174,7 +180,7 @@ Obrigatório para conformidade com a LGPD em sistemas de saúde. Registrar quem 
 
 ## Prioridade 3 — Melhorias no que já existe
 
-### 3.1 Filtro real de consultas por médico logado
+### ✅ 3.1 Filtro real de consultas por médico logado — IMPLEMENTADO
 
 O vínculo `Medico.usuario` existe (tabela `medicos.usuario_id`), mas nenhuma query filtra por ele. `ROLE_MEDICO` deveria ver apenas suas próprias consultas.
 
@@ -184,7 +190,7 @@ O vínculo `Medico.usuario` existe (tabela `medicos.usuario_id`), mas nenhuma qu
 medicoRepository.findByUsuario(usuarioLogado)
 ```
 
-### 3.2 Registrar quem cancelou a consulta
+### ✅ 3.2 Registrar quem cancelou a consulta — IMPLEMENTADO
 
 Atualmente o cancelamento registra apenas o motivo. Falta saber se foi o paciente ou a clínica que cancelou.
 
@@ -192,7 +198,7 @@ Atualmente o cancelamento registra apenas o motivo. Falta saber se foi o pacient
 - `cancelado_por`: enum `PACIENTE`, `CLINICA`
 - `cancelado_em`: `LocalDateTime`
 
-### 3.3 Auditoria de criação/alteração de entidades
+### ✅ 3.3 Auditoria de criação/alteração de entidades — IMPLEMENTADO
 
 Adicionar rastreamento automático nas entidades principais.
 
@@ -300,5 +306,6 @@ GET /ia/resumo-historico/{paciente_id}
 | `V15` | Adicionar `prioridade` e `tipo` em `consultas` | Aplicado |
 | `V16` | Adicionar `consulta_origem_id` e `cancelado_por` em `consultas` | Aplicado |
 | `V17` | Criar tabela `atestados` | Aplicado |
-| `V18` | Criar tabelas `convenios` e `paciente_convenios`, adicionar `convenio_id` em `consultas` | Pendente |
-| `V19` | Criar tabela `auditoria_prontuario` | Pendente |
+| `V18` | Criar tabelas `convenios` e `convenio_pacientes`, adicionar `convenio_id` em `consultas` | Aplicado |
+| `V19` | Criar tabela `auditoria_prontuario` | Aplicado |
+| `V20` | Adicionar colunas de auditoria (`criado_em`, `atualizado_em`) em todas as entidades | Aplicado |

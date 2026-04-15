@@ -23,6 +23,9 @@ public record DadosAgendamentoConsulta(
         PrioridadeConsulta prioridade,
 
         @Schema(example = "1", description = "ID da consulta original. Quando informado, agenda um retorno (não consome a cota diária do paciente)")
-        Long consultaOrigemId
+        Long consultaOrigemId,
+
+        @Schema(example = "1", description = "ID do convênio a ser utilizado na consulta (opcional)")
+        Long convenioId
 ) {
 }

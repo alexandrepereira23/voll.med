@@ -3,11 +3,16 @@ package med.voll.api.domain.atestado;
 import jakarta.persistence.*;
 import lombok.*;
 import med.voll.api.domain.prontuario.Prontuario;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Table(name = "atestados")
 @Entity(name = "Atestado")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,6 +35,13 @@ public class Atestado {
     private String observacoes;
 
     private boolean ativo;
+
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime criadoEm;
+
+    @LastModifiedDate
+    private LocalDateTime atualizadoEm;
 
     public Atestado(Prontuario prontuario, DadosCadastroAtestado dados) {
         this.prontuario = prontuario;
