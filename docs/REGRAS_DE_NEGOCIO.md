@@ -96,6 +96,16 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 
 ---
 
+## Especialidades
+
+| # | Regra | Erro |
+|---|-------|------|
+| 1 | Nome da especialidade deve ser único (case-insensitive) | 409 — Já existe uma especialidade com este nome |
+| 2 | Exclusão é lógica (campo `ativo = false`), restrita a `ROLE_ADMIN` | — |
+| 3 | `GET /especialidades` e `GET /especialidades/{id}` são acessíveis a qualquer usuário autenticado | — |
+
+---
+
 ## Usuários e Autenticação
 
 | # | Regra |

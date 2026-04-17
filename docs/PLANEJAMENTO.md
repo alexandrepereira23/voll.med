@@ -22,6 +22,8 @@ Este documento registra as funcionalidades planejadas para tornar o sistema util
 | **Convênios / Planos de Saúde** | **Implementado (V18)** |
 | **Auditoria LGPD (Prontuário)** | **Implementado (V19) via AOP** |
 | **Auditoria de Entidades (JPA)** | **Implementado (V20)** |
+| **Especialidade como entidade** | **Implementado (V21)** |
+| **Integração com IA (Claude API)** | **Implementado** |
 | Filtro consultas por médico logado | Implementado |
 
 ---
@@ -216,11 +218,9 @@ private String criadoPor;
 
 Requer habilitar `@EnableJpaAuditing` na aplicação.
 
-### 3.4 Especialidade como tabela separada
+### ✅ 3.4 Especialidade como tabela separada — IMPLEMENTADO
 
-Hoje `Especialidade` é um enum fixo no código. Dificulta adicionar novas especialidades sem deploy.
-
-**Mudança:** criar tabela `especialidades` e substituir o enum pela entidade, mantendo o enum apenas para as especialidades iniciais (seed via migration).
+`Especialidade` foi migrada de enum fixo para a entidade `EspecialidadeEntity` e tabela `especialidades` (V21). Novas especialidades podem ser adicionadas sem deploy via migration de `INSERT`.
 
 ---
 
@@ -309,3 +309,4 @@ GET /ia/resumo-historico/{paciente_id}
 | `V18` | Criar tabelas `convenios` e `convenio_pacientes`, adicionar `convenio_id` em `consultas` | Aplicado |
 | `V19` | Criar tabela `auditoria_prontuario` | Aplicado |
 | `V20` | Adicionar colunas de auditoria (`criado_em`, `atualizado_em`) em todas as entidades | Aplicado |
+| `V21` | Criar tabela `especialidades`, migrar FK em `medicos`, remover coluna enum | Aplicado |

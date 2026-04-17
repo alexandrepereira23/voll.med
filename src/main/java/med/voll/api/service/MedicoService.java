@@ -12,14 +12,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class MedicoService {
 
     private final MedicoRepository medicoRepository;
+    private final EspecialidadeRepository especialidadeRepository;
 
-    public MedicoService(MedicoRepository medicoRepository) {
+    public MedicoService(MedicoRepository medicoRepository, EspecialidadeRepository especialidadeRepository) {
         this.medicoRepository = medicoRepository;
+        this.especialidadeRepository = especialidadeRepository;
     }
 
     @Transactional
     public DadosDetalhamentoMedico cadastrar(DadosCadastroMedico dados) {
-        var medico = new Medico(dados);
+        var especialidade = especialidadeRepository.getReferenceById(dados.especialidadeId());
+        var medico = new Medico(dados, especialidade);
         medicoRepository.save(medico);
         return new DadosDetalhamentoMedico(medico);
     }

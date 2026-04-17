@@ -28,8 +28,9 @@ public class Medico {
 
     private String telefone;
     private String crm;
-    @Enumerated(EnumType.STRING)
-    private Especialidade especialidade;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "especialidade_id")
+    private EspecialidadeEntity especialidade;
 
     @Embedded
     private Endereco endereco;
@@ -47,13 +48,13 @@ public class Medico {
     @LastModifiedDate
     private LocalDateTime atualizadoEm;
 
-    public Medico(DadosCadastroMedico dados) {
+    public Medico(DadosCadastroMedico dados, EspecialidadeEntity especialidade) {
         this.ativo = true;
         this.nome = dados.nome();
         this.email = dados.email();
         this.telefone = dados.telefone();
         this.crm = dados.crm();
-        this.especialidade = dados.especialidade();
+        this.especialidade = especialidade;
         this.endereco = new Endereco(dados.endereco());
     }
 

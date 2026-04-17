@@ -81,6 +81,7 @@ cp .env.example .env
 | `TOKEN_EXPIRACAO_HORAS` | Não | `2` | Expiração do JWT em horas |
 | `ADMIN_LOGIN` | Não | `admin@vollmed.com` | Login do admin inicial |
 | `ADMIN_PASSWORD` | **Sim** | — | Senha do admin inicial (min. 8 chars) |
+| `ANTHROPIC_API_KEY` | Não* | — | Chave da API Anthropic (obrigatória para `/ia/*`) |
 
 Para gerar um `JWT_SECRET` seguro:
 
@@ -140,6 +141,21 @@ Esse processo é idempotente: se já existir um admin no banco, nada acontece.
 
 ## Endpoints da API
 
+### Especialidades
+
+| Método | Endpoint | Acesso | Descrição |
+|--------|----------|--------|-----------|
+| `POST` | `/especialidades` | `ROLE_ADMIN` | Cadastra nova especialidade |
+| `GET` | `/especialidades` | Autenticado | Lista especialidades ativas (paginado) |
+| `GET` | `/especialidades/{id}` | Autenticado | Detalha uma especialidade |
+| `PUT` | `/especialidades/{id}` | `ROLE_ADMIN` | Atualiza o nome |
+| `DELETE` | `/especialidades/{id}` | `ROLE_ADMIN` | Inativa (soft delete) |
+
+> Use o `id` retornado aqui no campo `especialidadeId` ao cadastrar um médico.
+> Nomes de especialidade são únicos (case-insensitive) — duplicata retorna HTTP 409.
+
+---
+
 ### Autenticação
 
 | Método | Endpoint | Acesso | Descrição |
@@ -189,7 +205,7 @@ Authorization: Bearer <token>
   "email": "joao.silva@voll.med",
   "telefone": "11999999999",
   "crm": "123456",
-  "especialidade": "CARDIOLOGIA",
+  "especialidadeId": 2,
   "endereco": {
     "logradouro": "Rua das Flores",
     "bairro": "Centro",
@@ -421,6 +437,41 @@ Authorization: Bearer <token>
 
 ---
 
+### IA Clínica
+
+> Todos os endpoints exigem `ROLE_MEDICO` e `ANTHROPIC_API_KEY` configurada no `.env`.
+
+| Método | Endpoint | Descrição | Modelo |
+|--------|----------|-----------|--------|
+| `POST` | `/ia/pre-diagnostico` | Hipóteses diagnósticas, exames sugeridos e risco | `claude-opus-4-7` |
+| `POST` | `/ia/gerar-laudo` | Laudo clínico estruturado a partir de anotações livres | `claude-sonnet-4-6` |
+| `GET` | `/ia/resumo-historico/{pacienteId}` | Resumo consolidado do histórico do paciente | `claude-sonnet-4-6` |
+
+**Pré-diagnóstico:**
+```json
+POST /ia/pre-diagnostico
+{
+  "consultaId": 1,
+  "sintomas": "febre há 3 dias, dor no corpo, tosse seca"
+}
+```
+
+**Gerar laudo:**
+```json
+POST /ia/gerar-laudo
+{
+  "prontuarioId": 1,
+  "anotacoes": "Paciente relata cefaleia intensa há 2 dias sem melhora com analgésicos..."
+}
+```
+
+**Resposta (todos os endpoints):**
+```json
+{ "resposta": "texto gerado pela IA..." }
+```
+
+---
+
 ## Banco de Dados — Migrations Flyway
 
 | Migration | Descrição |
@@ -445,6 +496,7 @@ Authorization: Bearer <token>
 | `V18` | Criação das tabelas `convenios` e `convenio_pacientes`, adição de `convenio_id` em `consultas` |
 | `V19` | Criação da tabela `auditoria_prontuario` |
 | `V20` | Adição de colunas de auditoria (`criado_em`, `atualizado_em`) em todas as entidades principais |
+| `V21` | Criação da tabela `especialidades`, migração da FK em `medicos`, remoção da coluna enum |
 
 ---
 

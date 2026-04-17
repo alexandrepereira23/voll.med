@@ -88,6 +88,33 @@ O `DisponibilidadeMedicoController` acessa os repositories diretamente, sem uma 
 | V9–V11 | Correções e ajustes na base |
 | V12 | Prontuário eletrônico |
 | V13 | Disponibilidade de médicos |
-| V14+ | Funcionalidades planejadas (ver `PLANEJAMENTO.md`) |
+| V14–V20 | Prescrições, triagem, retorno, atestados, convênios, auditoria LGPD, JPA auditing |
+| V21 | Especialidade como tabela (`especialidades`), migração de FK em `medicos` |
 
 Migrations são imutáveis após aplicadas em qualquer ambiente. Para corrigir uma migration já aplicada, criar uma nova.
+
+---
+
+## Domínio
+
+### Integração com IA via `RestClient` (sem SDK externo)
+
+A integração com a Anthropic API usa o `RestClient` nativo do Spring 6 chamando diretamente o endpoint `https://api.anthropic.com/v1/messages`, sem dependência do SDK `anthropic-java`.
+
+**Por quê:** o projeto já tem `RestClient` disponível. Adicionar o SDK seria uma dependência extra sem ganho real — o contrato da API é simples (POST JSON, receber JSON).
+
+**Prompt caching habilitado:** todos os prompts de sistema usam `"cache_control": {"type": "ephemeral"}`, reduzindo custo e latência em chamadas repetidas ao mesmo endpoint.
+
+**Dois modelos distintos por contexto:** `claude-opus-4-7` para pré-diagnóstico (maior precisão clínica) e `claude-sonnet-4-6` para laudo e resumo (velocidade suficiente para texto estruturado).
+
+**Nunca usar** `@Value("${ANTHROPIC_API_KEY}")` diretamente — seguir o padrão do projeto: `.env` → `application.properties` → `@Value("${anthropic.api.key}")`.
+
+---
+
+### `Especialidade` como entidade (V21)
+
+`Especialidade` foi migrada de enum Java para a entidade `EspecialidadeEntity` + tabela `especialidades`. O cadastro de médico passou a receber `especialidadeId` (Long) em vez do nome do enum.
+
+**Por quê:** com enum fixo, adicionar uma nova especialidade exigia um novo deploy. Com a tabela, basta inserir uma linha via migration ou futuramente via endpoint de administração.
+
+**Impacto na API:** o campo `especialidade` nas respostas continua retornando o nome como string (ex: `"CARDIOLOGIA"`) — sem quebra de compatibilidade nos GETs. O payload do `POST /medicos` passou a usar `"especialidadeId": 1`.

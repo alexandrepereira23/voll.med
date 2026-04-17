@@ -191,7 +191,7 @@ private LocalDateTime atualizadoEm;
 
 ---
 
-## ⏳ FASE 6 — Especialidade como tabela separada (3.4) — PENDENTE
+## ✅ FASE 6 — Especialidade como tabela separada (3.4) — CONCLUÍDA
 
 ### Estratégia de migração (sem downtime)
 
@@ -243,29 +243,30 @@ ALTER TABLE medicos DROP COLUMN especialidade;
 
 ---
 
-## ⏳ FASE 7 — Integração com IA (Claude API) — PENDENTE
+## ✅ FASE 7 — Integração com IA (Claude API) — CONCLUÍDA
 
-### Pré-requisitos
+### Arquivos criados
 
-- Chave da API Anthropic em `.env`: `ANTHROPIC_API_KEY`
-- Mapeada em `application.properties`: `anthropic.api.key=${ANTHROPIC_API_KEY}`
-- Dependência HTTP client (usar `RestClient` do Spring 6 — já disponível no projeto)
+- `domain/ia/DadosPreDiagnostico.java` — request: `consultaId`, `sintomas`
+- `domain/ia/DadosGerarLaudo.java` — request: `prontuarioId`, `anotacoes`
+- `domain/ia/DadosRespostaIa.java` — response: `resposta`
+- `service/IaService.java` — chama Anthropic API via `RestClient` com prompt caching
+- `controller/IaController.java` — 3 endpoints `ROLE_MEDICO`
 
-### Arquivos novos
+### Modelos utilizados
 
-**`service/IaService.java`** — centraliza chamadas à API Claude (prompt caching habilitado):
-- `gerarPreDiagnostico(String sintomas, Long consultaId)`
-- `gerarLaudo(String anotacoes, Long prontuarioId)`
-- `resumirHistorico(List<Prontuario> prontuarios)`
+| Endpoint | Modelo | Justificativa |
+|----------|--------|---------------|
+| `POST /ia/pre-diagnostico` | `claude-opus-4-7` | Maior capacidade para diagnóstico clínico complexo |
+| `POST /ia/gerar-laudo` | `claude-sonnet-4-6` | Equilíbrio velocidade/qualidade para laudos |
+| `GET /ia/resumo-historico/{id}` | `claude-sonnet-4-6` | Suficiente para sumarização de histórico |
 
-**`controller/IaController.java`** — `@RequestMapping("ia")`:
-- `POST /ia/pre-diagnostico` — `ROLE_MEDICO`
-- `POST /ia/gerar-laudo` — `ROLE_MEDICO`
-- `GET /ia/resumo-historico/{pacienteId}` — `ROLE_MEDICO`
+### Configuração necessária
 
-### Modelo a usar
-
-`claude-sonnet-4-6` — equilíbrio entre velocidade e capacidade clínica.
+Adicionar ao `.env`:
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
 
 ---
 

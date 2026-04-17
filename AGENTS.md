@@ -26,11 +26,11 @@ docker-compose up -d
 ## Entry Points
 
 - `ApiApplication.java` - main class
-- Controllers: `AutenticacaoController`, `MedicoController`, `PacientesController`, `ConsultaController`, `DisponibilidadeMedicoController`, `ProntuarioController`, `PrescricaoController`, `AtestadoController`, `ConvenioController`, `ConvenioPacienteController`, `AuditoriaController`
+- Controllers: `AutenticacaoController`, `MedicoController`, `PacientesController`, `ConsultaController`, `DisponibilidadeMedicoController`, `ProntuarioController`, `PrescricaoController`, `AtestadoController`, `ConvenioController`, `ConvenioPacienteController`, `AuditoriaController`, `EspecialidadeController`, `IaController`
 
 ## Migrations applied
 
-V1–V20 (next: V21 for `especialidades` table — enum-to-entity refactor)
+V1–V21 (next: V22 for IA integration — Claude API)
 
 ## Gotchas
 
@@ -39,3 +39,5 @@ V1–V20 (next: V21 for `especialidades` table — enum-to-entity refactor)
 - MySQL container needs password: `DB_PASSWORD=root` in `.env`
 - Test database uses H2 in-memory (configured in spring-boot-starter-test)
 - `SecurityFillter` and `RateLimitFilter` have `FilterRegistrationBean` disabling auto-registration — never remove them (Spring Security 6.5+ requirement)
+- `ANTHROPIC_API_KEY` required for `/ia/*` endpoints — app starts without it but calls fail at runtime
+- IA endpoints are `ROLE_MEDICO` only — do not change to broader roles

@@ -13,6 +13,18 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 
 ---
 
+## Especialidades
+
+| Método | Endpoint | Descrição | Roles |
+|--------|----------|-----------|-------|
+| `POST` | `/especialidades` | Cadastrar especialidade | ADMIN |
+| `GET` | `/especialidades` | Listar especialidades ativas (paginado) | Autenticado |
+| `GET` | `/especialidades/{id}` | Detalhar especialidade | Autenticado |
+| `PUT` | `/especialidades/{id}` | Atualizar nome | ADMIN |
+| `DELETE` | `/especialidades/{id}` | Inativar (soft delete) | ADMIN |
+
+---
+
 ## Médicos
 
 | Método | Endpoint | Descrição | Roles |
@@ -55,6 +67,7 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 {
   "idPaciente": 1,
   "idMedico": 2,              // opcional — sistema escolhe aleatório com disponibilidade real se omitido
+
   "data": "2025-01-15T10:00",
   "prioridade": "ROTINA",     // ROTINA (30 min) | PRIORITARIO (10 min) | URGENCIA (sem restrição). Padrão: ROTINA
   "consultaOrigemId": null    // ID da consulta original, para agendar retorno
@@ -131,6 +144,41 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
   "diasAfastamento": 3,
   "cid10": "J11.1",         // opcional
   "observacoes": "Repouso recomendado." // opcional
+}
+```
+
+---
+
+## IA Clínica
+
+> Todos os endpoints de IA exigem `ROLE_MEDICO`.
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| `POST` | `/ia/pre-diagnostico` | Hipóteses diagnósticas a partir de sintomas — `claude-opus-4-7` |
+| `POST` | `/ia/gerar-laudo` | Laudo estruturado a partir de anotações livres — `claude-sonnet-4-6` |
+| `GET` | `/ia/resumo-historico/{pacienteId}` | Resumo clínico consolidado do paciente — `claude-sonnet-4-6` |
+
+### Campos do pré-diagnóstico (`POST /ia/pre-diagnostico`)
+```json
+{
+  "consultaId": 1,
+  "sintomas": "febre há 3 dias, dor no corpo, tosse seca"
+}
+```
+
+### Campos do laudo (`POST /ia/gerar-laudo`)
+```json
+{
+  "prontuarioId": 1,
+  "anotacoes": "Paciente com queixa de cefaleia intensa há 2 dias, sem melhora com analgésicos comuns..."
+}
+```
+
+### Resposta de todos os endpoints de IA
+```json
+{
+  "resposta": "texto gerado pela IA..."
 }
 ```
 
