@@ -63,8 +63,10 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 4 | Apenas o médico que criou pode editar o prontuário | 403 |
 | 5 | Edição permitida somente dentro de 24h após o registro | 422 — Janela de edição expirada |
 | 6 | `ROLE_MEDICO` acessa apenas prontuários de suas próprias consultas | 403 |
-| 7 | `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura a todos os prontuários | — |
-| 8 | Exclusão é lógica (campo `ativo = false`), restrita a `ROLE_ADMIN` | — |
+| 7 | `ROLE_FUNCIONARIO` tem acesso operacional de leitura a prontuários quando necessário ao fluxo da clínica | — |
+| 8 | `ROLE_ADMIN` não acessa conteúdo clínico por padrão; acesso administrativo não implica acesso assistencial | 403 |
+| 9 | Leitura clínica ampla, quando necessária para auditoria/gestão, deve usar perfil específico (`ROLE_AUDITOR` ou `ROLE_GESTOR`) e ser auditada | — |
+| 10 | Exclusão/inativação administrativa de prontuário deve ser restrita a perfil com responsabilidade formal (`ROLE_AUDITOR` ou `ROLE_GESTOR`), não ao admin técnico | — |
 
 ---
 
@@ -75,9 +77,10 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 1 | Prontuário referenciado deve existir e estar ativo | 404 |
 | 2 | Apenas o médico responsável pelo prontuário pode criar prescrições | 403 |
 | 3 | `ROLE_MEDICO` acessa apenas prescrições de seus próprios prontuários | 403 |
-| 4 | `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura a todas as prescrições | — |
-| 5 | Receita `SIMPLES` tem validade de 30 dias; `ESPECIAL` de 60 dias (calculado automaticamente) | — |
-| 6 | Toda prescrição deve ter ao menos um item | 400 |
+| 4 | `ROLE_FUNCIONARIO` tem acesso operacional de leitura quando necessário; `ROLE_ADMIN` não acessa prescrições por padrão | — |
+| 5 | Leitura ampla de prescrições deve usar `ROLE_AUDITOR` ou `ROLE_GESTOR`, com trilha de auditoria | — |
+| 6 | Receita `SIMPLES` tem validade de 30 dias; `ESPECIAL` de 60 dias (calculado automaticamente) | — |
+| 7 | Toda prescrição deve ter ao menos um item | 400 |
 
 ---
 
@@ -88,11 +91,12 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 1 | Prontuário referenciado deve existir e estar ativo | 404 |
 | 2 | Apenas o médico responsável pelo prontuário pode emitir atestados | 403 |
 | 3 | `ROLE_MEDICO` acessa apenas atestados vinculados aos seus prontuários | 403 |
-| 4 | `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura a todos os atestados | — |
-| 5 | `diasAfastamento` deve ser no mínimo 1 | 400 |
-| 6 | `cid10` e `observacoes` são opcionais | — |
-| 7 | `dataEmissao` é preenchida automaticamente com a data atual | — |
-| 8 | Exclusão é lógica (campo `ativo = false`), restrita a `ROLE_ADMIN` | — |
+| 4 | `ROLE_FUNCIONARIO` tem acesso operacional de leitura quando necessário; `ROLE_ADMIN` não acessa atestados por padrão | — |
+| 5 | Leitura ampla de atestados deve usar `ROLE_AUDITOR` ou `ROLE_GESTOR`, com trilha de auditoria | — |
+| 6 | `diasAfastamento` deve ser no mínimo 1 | 400 |
+| 7 | `cid10` e `observacoes` são opcionais | — |
+| 8 | `dataEmissao` é preenchida automaticamente com a data atual | — |
+| 9 | Exclusão é lógica (campo `ativo = false`), restrita a perfil com responsabilidade formal (`ROLE_AUDITOR` ou `ROLE_GESTOR`) | — |
 
 ---
 
@@ -111,40 +115,50 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | # | Regra |
 |---|-------|
 | 1 | Apenas `ROLE_ADMIN` pode criar novos usuários |
-| 2 | Não é possível criar outro `ROLE_ADMIN` via endpoint de cadastro |
-| 3 | Senhas armazenadas com BCrypt |
-| 4 | Token JWT expira conforme `TOKEN_EXPIRACAO_HORAS` (padrão: 2h) |
-| 5 | Rate limiting: máx. 10 requisições por IP em 15 min em `/auth/*` |
-| 6 | Admin inicial criado automaticamente se não existir e `ADMIN_PASSWORD` estiver configurado |
+| 2 | `ROLE_ADMIN` é um perfil técnico-administrativo: gerencia usuários, perfis e parâmetros do sistema, mas não acessa dados clínicos por padrão |
+| 3 | Não é possível criar outro `ROLE_ADMIN` via endpoint de cadastro |
+| 4 | `ROLE_AUDITOR` ou `ROLE_GESTOR` deve ser usado para leitura ampla de dados clínicos, auditoria LGPD e relatórios sensíveis |
+| 5 | Senhas armazenadas com BCrypt |
+| 6 | Token JWT expira conforme `TOKEN_EXPIRACAO_HORAS` (padrão: 2h) |
+| 7 | Rate limiting: máx. 10 requisições por IP em 15 min em `/auth/*` |
+| 8 | Admin inicial criado automaticamente se não existir e `ADMIN_PASSWORD` estiver configurado |
 
 ---
 
 ## Perfis e Permissões por Endpoint
 
-| Endpoint | ADMIN | FUNCIONARIO | MEDICO |
-|----------|:-----:|:-----------:|:------:|
-| `POST /auth/cadastro` | ✅ | — | — |
-| `POST /medicos` | — | ✅ | — |
-| `PUT /medicos` | — | ✅ | — |
-| `DELETE /medicos/{id}` | — | ✅ | — |
-| `GET /medicos` | ✅ | ✅ | ✅ |
-| `POST /pacientes` | — | ✅ | — |
-| `PUT /pacientes` | — | ✅ | — |
-| `DELETE /pacientes/{id}` | — | ✅ | — |
-| `GET /pacientes` | ✅ | ✅ | ✅ |
-| `POST /consultas` | — | ✅ | — |
-| `DELETE /consultas` | — | ✅ | — |
-| `GET /consultas` | ✅ | ✅ | ✅ (apenas as suas) |
-| `POST /medicos/{id}/disponibilidade` | — | ✅ | — |
-| `GET /medicos/{id}/disponibilidade` | ✅ | ✅ | ✅ |
-| `DELETE /medicos/{id}/disponibilidade/{dispId}` | — | ✅ | — |
-| `POST /prontuarios` | — | — | ✅ (da sua consulta) |
-| `PUT /prontuarios` | — | — | ✅ (seu, em 24h) |
-| `GET /prontuarios` | ✅ | ✅ | ✅ (apenas os seus) |
-| `DELETE /prontuarios/{id}` | ✅ | — | — |
-| `POST /prescricoes` | — | — | ✅ (do seu prontuário) |
-| `GET /prescricoes/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
-| `GET /prescricoes/prontuario/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
-| `POST /atestados` | — | — | ✅ (do seu prontuário) |
-| `GET /atestados/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
-| `GET /atestados/paciente/{id}` | ✅ | ✅ | ✅ (apenas os seus) |
+Modelo profissional recomendado:
+
+- `ROLE_ADMIN`: administração técnica do sistema, usuários, perfis e parâmetros. Não acessa conteúdo clínico por padrão.
+- `ROLE_FUNCIONARIO`: operação administrativa da clínica, cadastros, agenda, convênios e leitura operacional necessária ao atendimento.
+- `ROLE_MEDICO`: atendimento clínico, agenda própria, prontuários próprios, prescrições, atestados e IA clínica.
+- `ROLE_AUDITOR` ou `ROLE_GESTOR`: leitura ampla de dados clínicos, auditoria LGPD e relatórios sensíveis, sempre com registro de acesso.
+
+| Endpoint | ADMIN | FUNCIONARIO | MEDICO | AUDITOR/GESTOR |
+|----------|:-----:|:-----------:|:------:|:--------------:|
+| `POST /auth/cadastro` | ✅ | — | — | — |
+| `POST /medicos` | — | ✅ | — | — |
+| `PUT /medicos` | — | ✅ | — | — |
+| `DELETE /medicos/{id}` | — | ✅ | — | — |
+| `GET /medicos` | — | ✅ | ✅ | ✅ |
+| `POST /pacientes` | — | ✅ | — | — |
+| `PUT /pacientes` | — | ✅ | — | — |
+| `DELETE /pacientes/{id}` | — | ✅ | — | — |
+| `GET /pacientes` | — | ✅ | ✅ (apenas vinculados) | ✅ |
+| `POST /consultas` | — | ✅ | — | — |
+| `DELETE /consultas` | — | ✅ | — | — |
+| `GET /consultas` | — | ✅ | ✅ (apenas as suas) | ✅ |
+| `POST /medicos/{id}/disponibilidade` | — | ✅ | — | — |
+| `GET /medicos/{id}/disponibilidade` | — | ✅ | ✅ | ✅ |
+| `DELETE /medicos/{id}/disponibilidade/{dispId}` | — | ✅ | — | — |
+| `POST /prontuarios` | — | — | ✅ (da sua consulta) | — |
+| `PUT /prontuarios` | — | — | ✅ (seu, em 24h) | — |
+| `GET /prontuarios` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
+| `DELETE /prontuarios/{id}` | — | — | — | ✅ |
+| `POST /prescricoes` | — | — | ✅ (do seu prontuário) | — |
+| `GET /prescricoes/{id}` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
+| `GET /prescricoes/prontuario/{id}` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
+| `POST /atestados` | — | — | ✅ (do seu prontuário) | — |
+| `GET /atestados/{id}` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
+| `GET /atestados/paciente/{id}` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
+| `GET /auditoria/**` | — | — | — | ✅ |

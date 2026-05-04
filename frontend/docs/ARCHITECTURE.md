@@ -149,7 +149,10 @@ export const medicos = {
 ```ts
 interface AuthContextType {
   token: string | null
-  user: { login: string; role: 'ROLE_ADMIN' | 'ROLE_FUNCIONARIO' | 'ROLE_MEDICO' } | null
+  user: {
+    login: string;
+    role: 'ROLE_ADMIN' | 'ROLE_FUNCIONARIO' | 'ROLE_MEDICO' | 'ROLE_AUDITOR' | 'ROLE_GESTOR'
+  } | null
   isAuthenticated: boolean
   login: (login: string, senha: string) => Promise<void>
   logout: () => void

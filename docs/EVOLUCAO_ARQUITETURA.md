@@ -3,9 +3,11 @@
 Este documento serve como o "Contexto Mestre" para a implementação do controle de acesso baseado em perfis (**Role-Based Access Control**) e a refatoração para a **Camada de Serviço**.
 
 ## 📌 Visão Geral da Mudança
-Transformar a API de um modelo de acesso único para um modelo de dois perfis:
-1.  **FUNCIONARIO**: Pode realizar cadastros (Médicos, Pacientes, Consultas) e visualizar tudo.
-2.  **MEDICO**: Acesso restrito apenas à sua própria agenda e dados de seus pacientes vinculados.
+Transformar a API para um modelo profissional de controle de acesso por perfis:
+1.  **ADMIN**: Administra usuários, perfis e parâmetros técnicos do sistema. Não acessa dados clínicos por padrão.
+2.  **FUNCIONARIO**: Opera a clínica: cadastros, agenda, convênios e leitura operacional necessária ao atendimento.
+3.  **MEDICO**: Acesso clínico restrito à própria agenda, aos próprios prontuários e aos pacientes vinculados.
+4.  **AUDITOR/GESTOR**: Acesso amplo de leitura para auditoria LGPD, relatórios sensíveis e supervisão formal, sempre auditado.
 
 ---
 
@@ -23,7 +25,7 @@ Transformar a API de um modelo de acesso único para um modelo de dois perfis:
 ### 🟢 ETAPA 1: Domínio e Banco de Dados (Refatoração de Usuário)
 **Objetivo:** Preparar o banco e a entidade para suportar Roles.
 1. Criar migration **Flyway** adicionando a coluna `role` (VARCHAR) na tabela `usuarios`.
-2. Criar Enum `Perfil` (`ROLE_FUNCIONARIO`, `ROLE_MEDICO`).
+2. Criar/atualizar Enum `Perfil` (`ROLE_ADMIN`, `ROLE_FUNCIONARIO`, `ROLE_MEDICO`, `ROLE_AUDITOR`, `ROLE_GESTOR`).
 3. Atualizar a entidade `Usuario` para implementar `UserDetails` com essas authorities.
 4. Adicionar relacionamento `@OneToOne` opcional entre `Usuario` e `Medico`.
 

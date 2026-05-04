@@ -2,6 +2,13 @@
 
 Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>`), exceto `/auth/login`.
 
+Perfis recomendados para ambiente profissional:
+
+- `ADMIN`: administração técnica, usuários, perfis e parâmetros. Não acessa dados clínicos por padrão.
+- `FUNCIONARIO`: operação da clínica, cadastros, agenda, convênios e leitura operacional.
+- `MEDICO`: atendimento clínico e acesso aos próprios dados assistenciais.
+- `AUDITOR`/`GESTOR`: leitura ampla, auditoria LGPD e relatórios sensíveis, sempre com rastreabilidade.
+
 ---
 
 ## Autenticação
@@ -18,8 +25,8 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/especialidades` | Cadastrar especialidade | ADMIN |
-| `GET` | `/especialidades` | Listar especialidades ativas (paginado) | Autenticado |
-| `GET` | `/especialidades/{id}` | Detalhar especialidade | Autenticado |
+| `GET` | `/especialidades` | Listar especialidades ativas (paginado) | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
+| `GET` | `/especialidades/{id}` | Detalhar especialidade | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
 | `PUT` | `/especialidades/{id}` | Atualizar nome | ADMIN |
 | `DELETE` | `/especialidades/{id}` | Inativar (soft delete) | ADMIN |
 
@@ -30,12 +37,12 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/medicos` | Cadastrar médico | FUNCIONARIO |
-| `GET` | `/medicos` | Listar médicos ativos (paginado) | ADMIN, FUNCIONARIO, MEDICO |
-| `GET` | `/medicos/{id}` | Detalhar médico | ADMIN, FUNCIONARIO, MEDICO |
+| `GET` | `/medicos` | Listar médicos ativos (paginado) | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
+| `GET` | `/medicos/{id}` | Detalhar médico | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
 | `PUT` | `/medicos/{id}` | Atualizar médico | FUNCIONARIO |
 | `DELETE` | `/medicos/{id}` | Inativar médico (exclusão lógica) | FUNCIONARIO |
 | `POST` | `/medicos/{id}/disponibilidade` | Cadastrar horários de disponibilidade | FUNCIONARIO |
-| `GET` | `/medicos/{id}/disponibilidade` | Listar horários de disponibilidade | ADMIN, FUNCIONARIO, MEDICO |
+| `GET` | `/medicos/{id}/disponibilidade` | Listar horários de disponibilidade | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
 | `DELETE` | `/medicos/{id}/disponibilidade/{dispId}` | Remover horário de disponibilidade | FUNCIONARIO |
 
 ---
@@ -45,8 +52,8 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/pacientes` | Cadastrar paciente | FUNCIONARIO |
-| `GET` | `/pacientes` | Listar pacientes ativos (paginado) | ADMIN, FUNCIONARIO, MEDICO |
-| `GET` | `/pacientes/{id}` | Detalhar paciente | ADMIN, FUNCIONARIO, MEDICO |
+| `GET` | `/pacientes` | Listar pacientes ativos (paginado) | FUNCIONARIO, AUDITOR/GESTOR; MEDICO apenas pacientes vinculados |
+| `GET` | `/pacientes/{id}` | Detalhar paciente | FUNCIONARIO, AUDITOR/GESTOR; MEDICO apenas pacientes vinculados |
 | `PUT` | `/pacientes/{id}` | Atualizar paciente | FUNCIONARIO |
 | `DELETE` | `/pacientes/{id}` | Inativar paciente (exclusão lógica) | FUNCIONARIO |
 
@@ -57,7 +64,7 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/consultas` | Agendar consulta | FUNCIONARIO |
-| `GET` | `/consultas` | Listar consultas (paginado) | ADMIN, FUNCIONARIO, MEDICO* |
+| `GET` | `/consultas` | Listar consultas (paginado) | FUNCIONARIO, AUDITOR/GESTOR, MEDICO* |
 | `DELETE` | `/consultas` | Cancelar consulta | FUNCIONARIO |
 
 > *MEDICO vê apenas suas próprias consultas (filtro por implementar — ver `docs/PLANEJAMENTO.md` item 3.1).
@@ -90,10 +97,10 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/prontuarios` | Criar prontuário vinculado a uma consulta | MEDICO (da consulta) |
-| `GET` | `/prontuarios/{id}` | Detalhar prontuário | ADMIN, FUNCIONARIO, MEDICO* |
-| `GET` | `/prontuarios/paciente/{id}` | Histórico clínico do paciente | ADMIN, FUNCIONARIO, MEDICO* |
+| `GET` | `/prontuarios/{id}` | Detalhar prontuário | FUNCIONARIO (leitura operacional), AUDITOR/GESTOR, MEDICO* |
+| `GET` | `/prontuarios/paciente/{id}` | Histórico clínico do paciente | FUNCIONARIO (leitura operacional), AUDITOR/GESTOR, MEDICO* |
 | `PUT` | `/prontuarios/{id}` | Editar prontuário (janela de 24h) | MEDICO (criador, dentro de 24h) |
-| `DELETE` | `/prontuarios/{id}` | Inativar prontuário | ADMIN |
+| `DELETE` | `/prontuarios/{id}` | Inativar prontuário | AUDITOR/GESTOR |
 
 > *MEDICO vê apenas prontuários de suas próprias consultas.
 
@@ -104,8 +111,8 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/prescricoes` | Criar prescrição vinculada a um prontuário | MEDICO (do prontuário) |
-| `GET` | `/prescricoes/{id}` | Detalhar prescrição | ADMIN, FUNCIONARIO, MEDICO* |
-| `GET` | `/prescricoes/prontuario/{id}` | Listar prescrições de um prontuário | ADMIN, FUNCIONARIO, MEDICO* |
+| `GET` | `/prescricoes/{id}` | Detalhar prescrição | FUNCIONARIO (leitura operacional), AUDITOR/GESTOR, MEDICO* |
+| `GET` | `/prescricoes/prontuario/{id}` | Listar prescrições de um prontuário | FUNCIONARIO (leitura operacional), AUDITOR/GESTOR, MEDICO* |
 
 > *MEDICO vê apenas prescrições de seus próprios prontuários.
 
@@ -132,8 +139,8 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/atestados` | Emitir atestado vinculado a um prontuário | MEDICO (do prontuário) |
-| `GET` | `/atestados/{id}` | Detalhar atestado | ADMIN, FUNCIONARIO, MEDICO* |
-| `GET` | `/atestados/paciente/{id}` | Histórico de atestados do paciente | ADMIN, FUNCIONARIO, MEDICO* |
+| `GET` | `/atestados/{id}` | Detalhar atestado | FUNCIONARIO (leitura operacional), AUDITOR/GESTOR, MEDICO* |
+| `GET` | `/atestados/paciente/{id}` | Histórico de atestados do paciente | FUNCIONARIO (leitura operacional), AUDITOR/GESTOR, MEDICO* |
 
 > *MEDICO vê apenas atestados vinculados aos seus prontuários.
 
@@ -181,6 +188,18 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
   "resposta": "texto gerado pela IA..."
 }
 ```
+
+---
+
+## Auditoria e Gestão
+
+> Endpoints de auditoria e relatórios sensíveis devem ser separados do `ROLE_ADMIN` técnico.
+
+| Método | Endpoint | Descrição | Roles |
+|--------|----------|-----------|-------|
+| `GET` | `/auditoria/**` | Consultar trilhas de acesso e eventos sensíveis | AUDITOR/GESTOR |
+
+`ROLE_ADMIN` pode configurar usuários e parâmetros, mas não deve consultar conteúdo clínico ou trilhas clínicas por padrão.
 
 ---
 

@@ -46,7 +46,8 @@ O mais importante. Atualmente uma consulta é agendada e cancelada, mas nenhum r
 - Somente o médico que realizou a consulta pode criar/editar o prontuário
 - Após 24h do registro, o prontuário não pode ser editado (integridade clínica)
 - `ROLE_MEDICO` acessa apenas prontuários de seus próprios pacientes
-- `ROLE_FUNCIONARIO` e `ROLE_ADMIN` têm acesso de leitura
+- `ROLE_FUNCIONARIO` tem acesso operacional de leitura quando necessário ao fluxo da clínica
+- `ROLE_ADMIN` não acessa conteúdo clínico por padrão; leitura ampla deve ficar em `ROLE_AUDITOR` ou `ROLE_GESTOR`
 
 **Endpoints sugeridos:**
 ```

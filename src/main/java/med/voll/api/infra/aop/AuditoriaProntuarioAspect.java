@@ -1,10 +1,9 @@
 package med.voll.api.infra.aop;
 
 import med.voll.api.domain.auditoria.AcaoAuditoria;
-import med.voll.api.domain.auditoria.AuditoriaProntuario;
-import med.voll.api.domain.auditoria.AuditoriaProntuarioRepository;
 import med.voll.api.domain.prontuario.DadosDetalhamentoProntuario;
 import med.voll.api.domain.usuario.Usuario;
+import med.voll.api.service.AuditoriaProntuarioService;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -17,10 +16,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Component
 public class AuditoriaProntuarioAspect {
 
-    private final AuditoriaProntuarioRepository auditoriaRepository;
+    private final AuditoriaProntuarioService auditoriaService;
 
-    public AuditoriaProntuarioAspect(AuditoriaProntuarioRepository auditoriaRepository) {
-        this.auditoriaRepository = auditoriaRepository;
+    public AuditoriaProntuarioAspect(AuditoriaProntuarioService auditoriaService) {
+        this.auditoriaService = auditoriaService;
     }
 
     @Around("execution(* med.voll.api.service.ProntuarioService.*(..))")
@@ -39,7 +38,7 @@ public class AuditoriaProntuarioAspect {
                 String ip = extrairIp();
                 AcaoAuditoria acao = mapearAcao(metodo);
 
-                auditoriaRepository.save(new AuditoriaProntuario(prontuarioId, usuarioId, acao, ip));
+                auditoriaService.registrar(prontuarioId, usuarioId, acao, ip);
             } catch (Exception e) {
                 // Auditoria nunca deve impedir o fluxo principal
             }

@@ -3,6 +3,13 @@
 Base URL: `http://localhost:8080`  
 Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/auth/login`).
 
+Perfis de acesso recomendados:
+
+- `ROLE_ADMIN`: administração técnica, cadastro de usuários e parâmetros. Não acessa dados clínicos por padrão.
+- `ROLE_FUNCIONARIO`: operação da clínica, agenda, cadastros e leitura operacional.
+- `ROLE_MEDICO`: atendimento clínico e acesso aos próprios dados assistenciais.
+- `ROLE_AUDITOR`/`ROLE_GESTOR`: leitura ampla, auditoria LGPD e relatórios sensíveis.
+
 ---
 
 ## Autenticação
@@ -22,7 +29,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 ### POST /auth/cadastro (ROLE_ADMIN)
 ```ts
 // Request
-{ login: string, senha: string, role: 'ROLE_FUNCIONARIO' | 'ROLE_MEDICO' }
+{ login: string, senha: string, role: 'ROLE_FUNCIONARIO' | 'ROLE_MEDICO' | 'ROLE_AUDITOR' | 'ROLE_GESTOR' }
 
 // Response 201
 { id: number, login: string }
@@ -35,7 +42,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 
 ## Especialidades
 
-### GET /especialidades
+### GET /especialidades (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — Page<Especialidade>
 {
@@ -55,7 +62,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 // Response 409 — nome duplicado (case-insensitive)
 ```
 
-### GET /especialidades/{id}
+### GET /especialidades/{id} (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200
 { id: number, nome: string, ativo: boolean }
@@ -102,13 +109,13 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 }
 ```
 
-### GET /medicos?page=0&size=10
+### GET /medicos?page=0&size=10 (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — Page<MedicoListagem>
 { content: Array<{ id, nome, email, crm, especialidade }>, ... }
 ```
 
-### GET /medicos/{id}
+### GET /medicos/{id} (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — MedicoCompleto
 { id, nome, email, crm, telefone, especialidade, endereco }
@@ -140,7 +147,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 { id, medicoId, diaSemana, horaInicio, horaFim, ativo }
 ```
 
-### GET /medicos/{id}/disponibilidade
+### GET /medicos/{id}/disponibilidade (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — Array<Disponibilidade>
 ```
@@ -163,12 +170,12 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 { id, nome, email, telefone, cpf, endereco, ativo }
 ```
 
-### GET /pacientes?page=0&size=10 (ROLE_FUNCIONARIO)
+### GET /pacientes?page=0&size=10 (ROLE_FUNCIONARIO / ROLE_AUDITOR / ROLE_GESTOR; ROLE_MEDICO apenas vinculados)
 ```ts
 // Response 200 — Page<PacienteListagem>
 ```
 
-### GET /pacientes/{id}
+### GET /pacientes/{id} (ROLE_FUNCIONARIO / ROLE_AUDITOR / ROLE_GESTOR; ROLE_MEDICO apenas vinculados)
 ```ts
 // Response 200 — PacienteCompleto
 ```
@@ -204,7 +211,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 { id, idMedico, idPaciente, data, prioridade, tipo, convenioId, motivoCancelamento }
 ```
 
-### GET /consultas?page=0&size=10
+### GET /consultas?page=0&size=10 (ROLE_FUNCIONARIO / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — Page<ConsultaListagem>
 // ROLE_MEDICO vê apenas suas consultas
@@ -231,18 +238,18 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 { id, consultaId, nomeMedico, nomePaciente, anamnese, diagnostico, cid10, observacoes, dataRegistro }
 ```
 
-### GET /prontuarios
+### GET /prontuarios (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — Page<ProntuarioListagem>
 // ROLE_MEDICO vê apenas seus prontuários
 ```
 
-### GET /prontuarios/{id}
+### GET /prontuarios/{id} (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — ProntuarioCompleto
 ```
 
-### GET /prontuarios/paciente/{pacienteId}
+### GET /prontuarios/paciente/{pacienteId} (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — Page<ProntuarioListagem>
 ```
@@ -256,7 +263,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 // Response 422 — fora da janela de 24h
 ```
 
-### DELETE /prontuarios/{id} (ROLE_ADMIN)
+### DELETE /prontuarios/{id} (ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 204
 ```
@@ -278,12 +285,12 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 { id, prontuarioId, tipo, dataEmissao, dataValidade, itens }
 ```
 
-### GET /prescricoes/{id}
+### GET /prescricoes/{id} (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — PrescricaoCompleta
 ```
 
-### GET /prescricoes/prontuario/{prontuarioId}
+### GET /prescricoes/prontuario/{prontuarioId} (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — Page<PrescricaoListagem>
 ```
@@ -301,12 +308,12 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 { id, prontuarioId, diasAfastamento, cid10, dataEmissao, observacoes }
 ```
 
-### GET /atestados/{id}
+### GET /atestados/{id} (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200
 ```
 
-### GET /atestados/paciente/{pacienteId}
+### GET /atestados/paciente/{pacienteId} (ROLE_FUNCIONARIO operacional / ROLE_AUDITOR / ROLE_GESTOR / ROLE_MEDICO)
 ```ts
 // Response 200 — Page<AtestadoListagem>
 ```
