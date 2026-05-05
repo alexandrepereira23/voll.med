@@ -1,142 +1,170 @@
-# Voll.med Fullstack
+# 🏥 Voll.med Fullstack
 
-Sistema fullstack para gerenciamento de uma clínica médica fictícia chamada **Voll.med**.
-
-O projeto combina uma API REST em Spring Boot com um frontend React. Ele cobre fluxos de cadastro, agenda, prontuário eletrônico, prescrições, atestados, convênios, auditoria LGPD e integração com IA clínica.
+Sistema Fullstack para gerenciamento de clínica médica, desenvolvido a partir de uma base inicial de API REST e **evoluído com novas funcionalidades, regras de negócio avançadas e integração com IA**.
 
 ---
 
-## Stack
+## ⚡ Resumo rápido
+
+* Sistema fullstack de gestão clínica
+* Backend em Spring Boot com regras de negócio avançadas
+* Frontend em React em desenvolvimento
+* Integração com IA clínica (Anthropic API)
+* 89 testes automatizados
+* Arquitetura organizada e documentada
+
+---
+
+## 🚀 Visão Geral
+
+O projeto começou como uma API simples de gerenciamento de clínica, mas foi expandido para um sistema mais completo, incluindo:
+
+* Backend robusto com regras de negócio complexas
+* Estrutura preparada para frontend
+* Integração com serviços de Inteligência Artificial
+* Documentação técnica e arquitetura organizada
+
+---
+
+## 🧠 Funcionalidades
+
+* ✔️ Gestão de médicos, pacientes e consultas
+* ✔️ Regras de negócio avançadas (além do CRUD básico)
+* ✔️ Integração com IA para processamento clínico
+* ✔️ Estrutura fullstack (backend + frontend)
+* ✔️ Dockerização da aplicação
+* ✔️ Documentação técnica em `/docs`
+
+---
+
+## 🤖 Integração com IA
+
+O sistema possui um serviço dedicado para integração com IA:
+
+📄 `src/main/java/med/voll/api/service/IaService.java`
+
+Atualmente implementa:
+
+* **Pré-diagnóstico clínico**
+  Sugestão de hipóteses diagnósticas, exames e classificação de risco
+
+* **Geração de laudos**
+  Conversão de anotações médicas em texto estruturado
+
+* **Resumo de histórico**
+  Consolidação de prontuários em uma visão clínica objetiva
+
+### 💡 Exemplo de uso
+
+**POST /ia/pre-diagnostico**
+
+Entrada:
+
+* sintomas
+* histórico do paciente
+
+Saída:
+
+* hipóteses diagnósticas
+* exames recomendados
+* alertas clínicos
+
+---
+
+## 🎨 Frontend
+
+O frontend está em desenvolvimento e segue uma arquitetura definida:
+
+📄 `frontend/docs/ARCHITECTURE.md`
+
+Tecnologias:
+
+* React 18
+* TypeScript
+* Vite
+* Tailwind CSS
+
+Objetivo:
+
+* Interface moderna e responsiva
+* Integração completa com o backend
+
+---
+
+## 📚 Regras de Negócio
+
+O sistema possui regras próprias documentadas:
+
+📄 `docs/REGRAS_DE_NEGOCIO.md`
+
+Inclui:
+
+* Disponibilidade real de médicos
+* Retorno de consultas
+* Prontuário eletrônico com restrições
+* Prescrições com validade
+* Auditoria LGPD
+* Controle de acesso por perfil (RBAC)
+
+---
+
+## ⚙️ Stack
 
 ### Backend
 
-| Tecnologia | Versão | Uso |
-|---|---:|---|
-| Java | 17 | Linguagem principal |
-| Spring Boot | 3.5.4 | API REST |
-| Spring Security | 6.5+ | JWT, filtros e autorização |
-| Spring Data JPA | — | Persistência |
-| Flyway | — | Migrations |
-| MySQL | 8.0 | Banco de dados local via Docker |
-| Maven Wrapper | — | Build e testes |
+| Tecnologia      | Uso                 |
+| --------------- | ------------------- |
+| Java 17         | Linguagem principal |
+| Spring Boot     | API REST            |
+| Spring Security | JWT e autorização   |
+| Spring Data JPA | Persistência        |
+| Flyway          | Migrations          |
+| MySQL           | Banco de dados      |
 
 ### Frontend
 
-| Tecnologia | Versão | Uso |
-|---|---:|---|
-| React | 18 | Interface web |
-| TypeScript | 5.6 | Tipagem |
-| Vite | 6 | Dev server e build |
-| Tailwind CSS | 3.4 | Estilização |
-| Axios | 1.7 | Cliente HTTP |
-| React Hook Form + Zod | — | Formulários e validação |
-| Lucide React | — | Ícones |
+| Tecnologia | Uso       |
+| ---------- | --------- |
+| React      | Interface |
+| TypeScript | Tipagem   |
+| Vite       | Build     |
+| Tailwind   | Estilo    |
+
+### Infraestrutura
+
+* Docker
+* Docker Compose
 
 ---
 
-## Estrutura
+## 📁 Estrutura do Projeto
 
-```text
+```bash
 .
-├── src/                         # Backend Spring Boot
-│   ├── main/java/med/voll/api/
-│   │   ├── controller/           # Controllers REST
-│   │   ├── domain/               # Entidades, DTOs e repositories
-│   │   ├── infra/                # Segurança, AOP e tratamento de erros
-│   │   └── service/              # Regras de aplicação
-│   ├── main/resources/
-│   │   └── db/migration/         # Migrations Flyway V1-V22
-│   └── test/                     # Testes unitários e WebMvcTest
-├── frontend/                     # Frontend React + Vite
-│   ├── src/
-│   │   ├── api/                  # Clientes HTTP por módulo
-│   │   ├── components/           # Layout e componentes de UI
-│   │   ├── contexts/             # AuthContext
-│   │   ├── pages/                # Telas do sistema
-│   │   ├── routes/               # Rotas privadas
-│   │   ├── types/                # Tipos TypeScript
-│   │   └── utils/                # Helpers
-│   └── docs/                     # Contratos e arquitetura frontend
-├── docs/                         # Regras, endpoints, decisões e testes
-├── docker-compose.yml            # MySQL local
+├── src/            # Backend
+├── frontend/       # Frontend React
+├── docs/           # Documentação técnica
+├── docker-compose.yml
 └── README.md
 ```
 
 ---
 
-## Pré-requisitos
+## ▶️ Como executar
 
-- Java 17+
-- Docker e Docker Compose
-- Node.js compatível com Vite 6
-- npm
-
-O projeto usa Maven Wrapper (`mvnw` / `mvnw.cmd`), então não é obrigatório instalar Maven globalmente.
-
----
-
-## Configuração
-
-Crie o arquivo `.env` a partir do exemplo:
-
-```bash
-cp .env.example .env
-```
-
-Variáveis principais:
-
-| Variável | Obrigatória | Descrição |
-|---|:---:|---|
-| `DB_HOST` | Não | Host do banco, padrão `localhost` |
-| `DB_PORT` | Não | Porta do banco, padrão `3307` |
-| `DB_NAME` | Não | Nome do banco |
-| `DB_USER` | Não | Usuário do banco |
-| `DB_PASSWORD` | Sim | Senha do banco |
-| `MYSQL_ROOT_PASSWORD` | Sim | Senha root do MySQL no Docker |
-| `JWT_SECRET` | Sim | Chave de assinatura JWT |
-| `TOKEN_EXPIRACAO_HORAS` | Não | Expiração do token |
-| `ADMIN_LOGIN` | Não | Login do admin inicial |
-| `ADMIN_PASSWORD` | Sim | Senha do admin inicial |
-| `ANTHROPIC_API_KEY` | Não | Obrigatória apenas para chamadas em `/ia/*` |
-
-Para gerar um segredo JWT:
-
-```bash
-openssl rand -base64 32
-```
-
----
-
-## Executando Localmente
-
-### 1. Subir o banco
+### 1. Subir banco
 
 ```bash
 docker-compose up -d
 ```
 
-O MySQL fica disponível em `localhost:3307`.
-
-### 2. Rodar o backend
-
-Linux/macOS:
+### 2. Rodar backend
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Windows PowerShell:
-
-```powershell
-.\mvnw.cmd spring-boot:run
-```
-
-Backend:
-
-- API: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-
-### 3. Rodar o frontend
+### 3. Rodar frontend
 
 ```bash
 cd frontend
@@ -144,120 +172,59 @@ npm install
 npm run dev
 ```
 
-Frontend:
-
-- App: `http://localhost:5173`
-
-O frontend chama o backend em `http://localhost:8080`. O backend já possui CORS configurado para o Vite local (`localhost:5173` e `127.0.0.1:5173`).
-
 ---
 
-## Build e Testes
-
-### Backend
+## 🧪 Testes
 
 ```bash
 ./mvnw test
 ```
 
-No Windows:
-
-```powershell
-.\mvnw.cmd test
-```
-
-Suite atual: **89 testes**.
-
-### Frontend
-
-```bash
-cd frontend
-npm run build
-```
+✔️ Suite atual: **89 testes**
 
 ---
 
-## Módulos
+## 🔐 Segurança
 
-### Backend
+* Autenticação com JWT
+* Controle de acesso por perfil (RBAC)
+* Rate limit em endpoints de autenticação
+* Auditoria de acesso (LGPD)
 
-- Autenticação JWT
-- Rate limit em `/auth/*`
-- Médicos
-- Pacientes
-- Consultas
-- Disponibilidade médica
-- Prontuários
-- Prescrições
-- Atestados
-- Especialidades
-- Convênios
-- Auditoria LGPD
-- IA clínica via Anthropic API
+Perfis principais:
 
-### Frontend
-
-- Login
-- Dashboard
-- Médicos
-- Pacientes
-- Consultas
-- Prontuários
-- Prescrições
-- Atestados
-- Especialidades
-- Convênios
-- IA Clínica
+* `ROLE_ADMIN`
+* `ROLE_FUNCIONARIO`
+* `ROLE_MEDICO`
 
 ---
 
-## Perfis e Segurança
+## 📌 Status
 
-O sistema usa JWT com perfis no token.
+🚧 Projeto em evolução ativa
 
-Perfis atualmente implementados no backend:
-
-- `ROLE_ADMIN`
-- `ROLE_FUNCIONARIO`
-- `ROLE_MEDICO`
-
-Modelo profissional documentado para evolução do RBAC:
-
-- `ROLE_ADMIN`: administração técnica, usuários, perfis e parâmetros. Não deve acessar dados clínicos por padrão.
-- `ROLE_FUNCIONARIO`: operação da clínica, cadastros, agenda, convênios e leitura operacional.
-- `ROLE_MEDICO`: atendimento clínico e acesso aos próprios dados assistenciais.
-- `ROLE_AUDITOR` / `ROLE_GESTOR`: leitura ampla, auditoria LGPD e relatórios sensíveis.
-
-Essa divisão profissional está documentada em `docs/REGRAS_DE_NEGOCIO.md`, `docs/ENDPOINTS.md` e `frontend/docs/API_CONTRATOS.md`. A implementação desses novos perfis deve ser feita em etapa própria.
+* Expansão do frontend
+* Evolução da integração com IA
+* Novas regras de negócio em desenvolvimento
 
 ---
 
-## Documentação
+## 📸 Demonstração
 
-| Arquivo | Conteúdo |
-|---|---|
-| `docs/ENDPOINTS.md` | Referência de endpoints e perfis |
-| `docs/REGRAS_DE_NEGOCIO.md` | Regras de domínio e permissões |
-| `docs/DECISOES_TECNICAS.md` | Decisões técnicas e gotchas |
-| `docs/TESTES.md` | Estratégia de testes |
-| `docs/PLANEJAMENTO.md` | Evolução do produto |
-| `frontend/docs/API_CONTRATOS.md` | Contratos backend ↔ frontend |
-| `frontend/docs/ARCHITECTURE.md` | Arquitetura frontend |
-| `frontend/docs/DESIGN_SYSTEM.md` | Design system |
+*(Adicionar GIF ou prints aqui futuramente)*
 
 ---
 
-## Observações
+## 📚 Documentação
 
-- Exclusões são lógicas via campo `ativo`.
-- Migrations Flyway são a fonte de verdade do schema.
-- O backend usa `ddl-auto=validate`.
-- `SecurityFillter` e `RateLimitFilter` têm auto-registro desabilitado via `FilterRegistrationBean`; não remova esses beans.
-- Testes usam H2 com Flyway desabilitado e `ddl-auto=create-drop`.
-- A integração com IA depende de `ANTHROPIC_API_KEY`.
+* `docs/ENDPOINTS.md`
+* `docs/REGRAS_DE_NEGOCIO.md`
+* `docs/DECISOES_TECNICAS.md`
+* `docs/TESTES.md`
+* `frontend/docs/ARCHITECTURE.md`
 
 ---
 
-## Licença
+## 👨‍💻 Autor
 
-Projeto desenvolvido para fins de aprendizado no curso da **Alura**.
+Alexandre Henrique
