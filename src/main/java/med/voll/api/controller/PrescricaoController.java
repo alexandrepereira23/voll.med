@@ -48,6 +48,7 @@ public class PrescricaoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Detalhar prescrição", description = "Retorna os dados completos de uma prescrição, incluindo todos os itens")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Prescrição encontrada"),
@@ -62,6 +63,7 @@ public class PrescricaoController {
     }
 
     @GetMapping("/prontuario/{prontuarioId}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Listar prescrições do prontuário", description = "Lista todas as prescrições ativas de um prontuário. Médico vê apenas as suas")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso"),

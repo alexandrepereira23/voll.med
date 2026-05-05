@@ -53,6 +53,10 @@ class MedicoControllerTest {
         return new Usuario(2L, "medico@test.com", "senha", Perfil.ROLE_MEDICO, null);
     }
 
+    private Usuario usuarioAdmin() {
+        return new Usuario(3L, "admin@test.com", "senha", Perfil.ROLE_ADMIN, null);
+    }
+
     private DadosCadastroMedico dadosCadastro() {
         return new DadosCadastroMedico(
                 "Dr. João Silva",
@@ -95,7 +99,7 @@ class MedicoControllerTest {
     }
 
     @Test
-    @DisplayName("deve listar médicos com sucesso para qualquer usuário autenticado")
+    @DisplayName("ROLE_FUNCIONARIO deve listar médicos e receber 200")
     void deveListarMedicos() throws Exception {
         when(medicoService.listar(any(Pageable.class), any(Usuario.class)))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -106,7 +110,15 @@ class MedicoControllerTest {
     }
 
     @Test
-    @DisplayName("deve detalhar médico com sucesso")
+    @DisplayName("ROLE_ADMIN não deve listar médicos — deve receber 403")
+    void naoDeveListarMedicosComAdmin() throws Exception {
+        mvc.perform(get("/medicos")
+                        .with(user(usuarioAdmin())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ROLE_FUNCIONARIO deve detalhar médico e receber 200")
     void deveDetalharMedico() throws Exception {
         when(medicoService.detalhar(1L)).thenReturn(detalhamento());
 
@@ -114,6 +126,14 @@ class MedicoControllerTest {
                         .with(user(usuarioFuncionario())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.crm").value("123456"));
+    }
+
+    @Test
+    @DisplayName("ROLE_ADMIN não deve detalhar médico — deve receber 403")
+    void naoDeveDetalharMedicoComAdmin() throws Exception {
+        mvc.perform(get("/medicos/1")
+                        .with(user(usuarioAdmin())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

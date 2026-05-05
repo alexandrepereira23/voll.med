@@ -52,7 +52,7 @@ public class AutenticacaoController {
 
     @PostMapping("/cadastro")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @Operation(summary = "Cadastrar novo usuário", description = "Cria um novo usuário. Requer perfil ADMIN. Não é possível criar outro ADMIN por esta rota.")
+    @Operation(summary = "Cadastrar novo usuário", description = "Cria um novo usuário operacional. Requer perfil ADMIN. Não é possível criar outro ADMIN por esta rota.")
     public ResponseEntity<DadosDetalhamentoUsuario> cadastrar(@RequestBody @Valid DadosCadastroUsuario dados) {
         if (dados.role() == Perfil.ROLE_ADMIN) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();

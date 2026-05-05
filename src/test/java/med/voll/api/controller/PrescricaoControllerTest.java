@@ -51,6 +51,10 @@ class PrescricaoControllerTest {
         return new Usuario(2L, "func@test.com", "senha", Perfil.ROLE_FUNCIONARIO, null);
     }
 
+    private Usuario usuarioAdmin() {
+        return new Usuario(3L, "admin@test.com", "senha", Perfil.ROLE_ADMIN, null);
+    }
+
     private DadosCadastroPrescricao dadosCadastro() {
         var item = new DadosCadastroItemPrescricao("Amoxicilina", "500mg", "1 comprimido de 8/8h", "7 dias");
         return new DadosCadastroPrescricao(1L, TipoPrescricao.SIMPLES, List.of(item));
@@ -85,7 +89,7 @@ class PrescricaoControllerTest {
     }
 
     @Test
-    @DisplayName("deve detalhar prescrição para qualquer usuário autenticado")
+    @DisplayName("ROLE_FUNCIONARIO deve detalhar prescrição e receber 200")
     void deveDetalharPrescricao() throws Exception {
         when(prescricaoService.detalhar(anyLong(), any())).thenReturn(detalhamento());
 
@@ -96,7 +100,15 @@ class PrescricaoControllerTest {
     }
 
     @Test
-    @DisplayName("deve listar prescrições por prontuário para qualquer usuário autenticado")
+    @DisplayName("ROLE_ADMIN não deve detalhar prescrição — deve receber 403")
+    void naoDeveDetalharPrescricaoComAdmin() throws Exception {
+        mvc.perform(get("/prescricoes/1")
+                        .with(user(usuarioAdmin())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ROLE_FUNCIONARIO deve listar prescrições por prontuário e receber 200")
     void deveListarPrescricoesPorProntuario() throws Exception {
         when(prescricaoService.listarPorProntuario(anyLong(), any(Pageable.class), any()))
                 .thenReturn(new PageImpl<>(List.of()));

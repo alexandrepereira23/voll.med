@@ -200,19 +200,30 @@ Cada arquivo de tipo exporta:
   <Route path="/login" element={<Login />} />
   <Route element={<PrivateRoute />}>
     <Route element={<Layout />}>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/medicos" element={<MedicosPage />} />
-      <Route path="/pacientes" element={<PacientesPage />} />
-      <Route path="/consultas" element={<ConsultasPage />} />
-      <Route path="/prontuarios" element={<ProntuariosPage />} />
-      <Route path="/especialidades" element={<EspecialidadesPage />} />
-      <Route path="/convenios" element={<ConveniosPage />} />
-      <Route path="/ia" element={<IaPage />} />
+      <Route element={<RoleRoute roles={adminRoles} />}>
+        <Route path="/usuarios" element={<UsuariosPage />} />
+      </Route>
+      <Route element={<RoleRoute roles={clinicalRoles} />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/medicos" element={<MedicosPage />} />
+        <Route path="/pacientes" element={<PacientesPage />} />
+        <Route path="/consultas" element={<ConsultasPage />} />
+        <Route path="/prontuarios" element={<ProntuariosPage />} />
+        <Route path="/especialidades" element={<EspecialidadesPage />} />
+      </Route>
+      <Route element={<RoleRoute roles={['ROLE_FUNCIONARIO']} />}>
+        <Route path="/convenios" element={<ConveniosPage />} />
+      </Route>
+      <Route element={<RoleRoute roles={['ROLE_MEDICO']} />}>
+        <Route path="/ia" element={<IaPage />} />
+      </Route>
     </Route>
   </Route>
   <Route path="*" element={<Navigate to="/" replace />} />
 </Routes>
 ```
+
+`PrivateRoute` garante autenticação. `RoleRoute` aplica RBAC no client-side para experiência de navegação: `ROLE_ADMIN` acessa `/usuarios`, perfis clínicos acessam as telas assistenciais, `ROLE_FUNCIONARIO` acessa convênios e `ROLE_MEDICO` acessa IA clínica. A segurança real continua no backend.
 
 ---
 

@@ -53,6 +53,17 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 
 ---
 
+## Pacientes
+
+| # | Regra | Erro |
+|---|-------|------|
+| 1 | `ROLE_FUNCIONARIO` cadastra, atualiza, lista, detalha e inativa pacientes | 403 |
+| 2 | `ROLE_MEDICO` lista e detalha apenas pacientes vinculados às suas consultas ativas | 403 |
+| 3 | `ROLE_AUDITOR` e `ROLE_GESTOR` têm leitura ampla para auditoria/gestão | — |
+| 4 | `ROLE_ADMIN` não acessa dados de pacientes por padrão | 403 |
+
+---
+
 ## Prontuários
 
 | # | Regra | Erro |
@@ -122,6 +133,7 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 6 | Token JWT expira conforme `TOKEN_EXPIRACAO_HORAS` (padrão: 2h) |
 | 7 | Rate limiting: máx. 10 requisições por IP em 15 min em `/auth/*` |
 | 8 | Admin inicial criado automaticamente se não existir e `ADMIN_PASSWORD` estiver configurado |
+| 9 | `ROLE_ADMIN` pode criar `ROLE_FUNCIONARIO`, `ROLE_MEDICO`, `ROLE_AUDITOR` e `ROLE_GESTOR`; não pode criar outro `ROLE_ADMIN` pela API |
 
 ---
 

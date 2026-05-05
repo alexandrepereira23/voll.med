@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import med.voll.api.domain.paciente.*;
+import med.voll.api.domain.usuario.Usuario;
 import med.voll.api.service.PacienteService;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -35,11 +37,12 @@ public class PacientesController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
-    @Operation(summary = "Listar pacientes", description = "Lista pacientes ativos com paginação")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
+    @Operation(summary = "Listar pacientes", description = "Lista pacientes ativos com paginação. Médico vê apenas pacientes vinculados às suas consultas")
     public ResponseEntity<Page<DadosListagemPaciente>> listar(
-            @ParameterObject @PageableDefault(size = 10) Pageable paginacao) {
-        var page = pacienteService.listarAtivos(paginacao);
+            @ParameterObject @PageableDefault(size = 10) Pageable paginacao,
+            @AuthenticationPrincipal Usuario usuario) {
+        var page = pacienteService.listarAtivos(paginacao, usuario);
         return  ResponseEntity.ok(page);
     }
 
@@ -61,9 +64,12 @@ public class PacientesController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Detalhar paciente", description = "Retorna os detalhes de um paciente específico")
-    public ResponseEntity<DadosDetalhamentoPaciente> detalhar(@PathVariable Long id) {
-        var paciente = pacienteService.detalhar(id);
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
+    @Operation(summary = "Detalhar paciente", description = "Retorna os detalhes de um paciente específico. Médico acessa apenas pacientes vinculados às suas consultas")
+    public ResponseEntity<DadosDetalhamentoPaciente> detalhar(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Usuario usuario) {
+        var paciente = pacienteService.detalhar(id, usuario);
         return  ResponseEntity.ok(paciente);
     }
 

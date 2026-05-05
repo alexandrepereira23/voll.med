@@ -54,6 +54,10 @@ class ConsultaControllerTest {
         return new Usuario(2L, "medico@test.com", "senha", Perfil.ROLE_MEDICO, null);
     }
 
+    private Usuario usuarioAdmin() {
+        return new Usuario(3L, "admin@test.com", "senha", Perfil.ROLE_ADMIN, null);
+    }
+
     private LocalDateTime dataValida() {
         return LocalDateTime.now()
                 .with(TemporalAdjusters.next(DayOfWeek.MONDAY))
@@ -94,7 +98,7 @@ class ConsultaControllerTest {
     }
 
     @Test
-    @DisplayName("deve listar consultas com sucesso para qualquer usuário autenticado")
+    @DisplayName("ROLE_FUNCIONARIO deve listar consultas e receber 200")
     void deveListarConsultas() throws Exception {
         when(consultaService.listarAtivas(any(Pageable.class), any(Usuario.class)))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -102,6 +106,14 @@ class ConsultaControllerTest {
         mvc.perform(get("/consultas")
                         .with(user(usuarioFuncionario())))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("ROLE_ADMIN não deve listar consultas — deve receber 403")
+    void naoDeveListarConsultasComAdmin() throws Exception {
+        mvc.perform(get("/consultas")
+                        .with(user(usuarioAdmin())))
+                .andExpect(status().isForbidden());
     }
 
     @Test

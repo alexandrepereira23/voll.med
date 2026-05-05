@@ -25,10 +25,10 @@ public class AuditoriaController {
     }
 
     @GetMapping("/prontuarios/{prontuarioId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyRole('ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(
             summary = "Logs de acesso ao prontuário",
-            description = "Retorna o histórico de acessos a um prontuário (LGPD). Acesso restrito a ROLE_ADMIN."
+            description = "Retorna o histórico de acessos a um prontuário (LGPD). Acesso restrito a ROLE_AUDITOR ou ROLE_GESTOR."
     )
     @ApiResponse(responseCode = "200", description = "Histórico retornado com sucesso")
     public ResponseEntity<Page<DadosListagemAuditoria>> listar(

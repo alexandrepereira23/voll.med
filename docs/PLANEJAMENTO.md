@@ -185,7 +185,7 @@ Obrigatório para conformidade com a LGPD em sistemas de saúde. Registrar quem 
 
 ### ✅ 3.1 Filtro real de consultas por médico logado — IMPLEMENTADO
 
-O vínculo `Medico.usuario` existe (tabela `medicos.usuario_id`), mas nenhuma query filtra por ele. `ROLE_MEDICO` deveria ver apenas suas próprias consultas.
+O vínculo `Medico.usuario` existe (tabela `medicos.usuario_id`) e a listagem de consultas já filtra por ele. `ROLE_MEDICO` vê apenas suas próprias consultas.
 
 **Mudança em `ConsultaController`:**
 ```java

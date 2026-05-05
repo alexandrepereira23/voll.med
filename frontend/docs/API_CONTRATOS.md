@@ -32,7 +32,7 @@ Perfis de acesso recomendados:
 { login: string, senha: string, role: 'ROLE_FUNCIONARIO' | 'ROLE_MEDICO' | 'ROLE_AUDITOR' | 'ROLE_GESTOR' }
 
 // Response 201
-{ id: number, login: string }
+{ id: number, login: string, role: 'ROLE_FUNCIONARIO' | 'ROLE_MEDICO' | 'ROLE_AUDITOR' | 'ROLE_GESTOR' }
 
 // Response 409 — login já existe
 // Response 403 — tentativa de criar ROLE_ADMIN

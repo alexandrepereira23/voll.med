@@ -41,7 +41,8 @@ public class ProntuarioController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar prontuários", description = "Lista prontuários ativos. Médico vê apenas os seus; Admin e Funcionário veem todos")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
+    @Operation(summary = "Listar prontuários", description = "Lista prontuários ativos. Médico vê apenas os seus; funcionário tem leitura operacional; auditor/gestor têm leitura ampla")
     public ResponseEntity<Page<DadosListagemProntuario>> listar(
             @ParameterObject @PageableDefault(size = 10) Pageable pageable,
             @AuthenticationPrincipal Usuario usuario
@@ -50,6 +51,7 @@ public class ProntuarioController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Detalhar prontuário", description = "Retorna os dados completos de um prontuário")
     public ResponseEntity<DadosDetalhamentoProntuario> detalhar(
             @PathVariable Long id,
@@ -59,6 +61,7 @@ public class ProntuarioController {
     }
 
     @GetMapping("/paciente/{pacienteId}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Histórico do paciente", description = "Lista o histórico clínico de um paciente")
     public ResponseEntity<Page<DadosListagemProntuario>> listarPorPaciente(
             @PathVariable Long pacienteId,
@@ -79,8 +82,8 @@ public class ProntuarioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @Operation(summary = "Inativar prontuário", description = "Realiza a exclusão lógica de um prontuário (somente Admin)")
+    @PreAuthorize("hasAnyRole('ROLE_AUDITOR', 'ROLE_GESTOR')")
+    @Operation(summary = "Inativar prontuário", description = "Realiza a exclusão lógica de um prontuário (auditoria/gestão)")
     public ResponseEntity<Void> inativar(@PathVariable Long id) {
         prontuarioService.inativar(id);
         return ResponseEntity.noContent().build();

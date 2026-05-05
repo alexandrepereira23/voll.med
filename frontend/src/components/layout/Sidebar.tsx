@@ -1,40 +1,11 @@
-import {
-  LayoutDashboard,
-  Stethoscope,
-  Users,
-  Calendar,
-  FileText,
-  Pill,
-  ClipboardList,
-  Star,
-  CreditCard,
-  Bot,
-  LogOut,
-} from 'lucide-react'
+import { LogOut, Stethoscope } from 'lucide-react'
 import { NavItem } from './NavItem'
 import { useAuth } from '@/hooks/useAuth'
-
-const navItems = [
-  { to: '/', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-  { to: '/medicos', icon: <Stethoscope size={18} />, label: 'Médicos' },
-  { to: '/pacientes', icon: <Users size={18} />, label: 'Pacientes' },
-  { to: '/consultas', icon: <Calendar size={18} />, label: 'Consultas' },
-  { to: '/prontuarios', icon: <FileText size={18} />, label: 'Prontuários' },
-  { to: '/prescricoes', icon: <Pill size={18} />, label: 'Prescrições' },
-  { to: '/atestados', icon: <ClipboardList size={18} />, label: 'Atestados' },
-  { to: '/especialidades', icon: <Star size={18} />, label: 'Especialidades' },
-  { to: '/convenios', icon: <CreditCard size={18} />, label: 'Convênios' },
-  { to: '/ia', icon: <Bot size={18} />, label: 'IA Clínica' },
-]
-
-const roleLabels: Record<string, string> = {
-  ROLE_ADMIN: 'Administrador',
-  ROLE_FUNCIONARIO: 'Funcionário',
-  ROLE_MEDICO: 'Médico',
-}
+import { canAccess, navItems, roleLabels } from '@/utils/roles'
 
 export function Sidebar() {
   const { user, logout } = useAuth()
+  const visibleItems = navItems.filter((item) => canAccess(user?.role, item.roles))
 
   return (
     <aside className="w-60 h-screen sticky top-0 bg-surface flex flex-col flex-shrink-0">
@@ -51,7 +22,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavItem key={item.to} {...item} />
         ))}
       </nav>
@@ -60,7 +31,7 @@ export function Sidebar() {
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-sm font-medium text-text-primary truncate">{user?.login}</p>
-            <p className="text-xs text-text-muted">{roleLabels[user?.role ?? ''] ?? user?.role}</p>
+            <p className="text-xs text-text-muted">{user?.role ? roleLabels[user.role] : ''}</p>
           </div>
           <button
             onClick={logout}

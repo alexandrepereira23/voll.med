@@ -36,6 +36,7 @@ public class ConsultaController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Listar consultas", description = "Lista consultas ativas com paginação")
     public ResponseEntity<Page<DadosListagemConsulta>> listar(
             @ParameterObject @PageableDefault(size = 10, sort = {"dataHora"}) Pageable paginacao,

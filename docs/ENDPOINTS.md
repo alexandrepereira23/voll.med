@@ -16,7 +16,7 @@ Perfis recomendados para ambiente profissional:
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
 | `POST` | `/auth/login` | Autenticar e obter JWT | Público |
-| `POST` | `/auth/cadastro` | Criar novo usuário | ADMIN |
+| `POST` | `/auth/cadastro` | Criar novo usuário operacional (`FUNCIONARIO`, `MEDICO`, `AUDITOR` ou `GESTOR`) | ADMIN |
 
 ---
 
@@ -67,7 +67,7 @@ Perfis recomendados para ambiente profissional:
 | `GET` | `/consultas` | Listar consultas (paginado) | FUNCIONARIO, AUDITOR/GESTOR, MEDICO* |
 | `DELETE` | `/consultas` | Cancelar consulta | FUNCIONARIO |
 
-> *MEDICO vê apenas suas próprias consultas (filtro por implementar — ver `docs/PLANEJAMENTO.md` item 3.1).
+> *MEDICO vê apenas suas próprias consultas.
 
 ### Campos do agendamento (`POST /consultas`)
 ```json
@@ -193,7 +193,7 @@ Perfis recomendados para ambiente profissional:
 
 ## Auditoria e Gestão
 
-> Endpoints de auditoria e relatórios sensíveis devem ser separados do `ROLE_ADMIN` técnico.
+> Endpoints de auditoria e relatórios sensíveis são separados do `ROLE_ADMIN` técnico.
 
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|

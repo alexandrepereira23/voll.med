@@ -51,6 +51,10 @@ class AtestadoControllerTest {
         return new Usuario(2L, "func@test.com", "senha", Perfil.ROLE_FUNCIONARIO, null);
     }
 
+    private Usuario usuarioAdmin() {
+        return new Usuario(3L, "admin@test.com", "senha", Perfil.ROLE_ADMIN, null);
+    }
+
     private DadosCadastroAtestado dadosCadastro() {
         return new DadosCadastroAtestado(1L, 3, "J11.1", "Repouso absoluto");
     }
@@ -83,7 +87,7 @@ class AtestadoControllerTest {
     }
 
     @Test
-    @DisplayName("deve detalhar atestado para qualquer usuário autenticado")
+    @DisplayName("ROLE_FUNCIONARIO deve detalhar atestado e receber 200")
     void deveDetalharAtestado() throws Exception {
         when(atestadoService.detalhar(anyLong(), any())).thenReturn(detalhamento());
 
@@ -94,7 +98,15 @@ class AtestadoControllerTest {
     }
 
     @Test
-    @DisplayName("deve listar atestados por paciente para qualquer usuário autenticado")
+    @DisplayName("ROLE_ADMIN não deve detalhar atestado — deve receber 403")
+    void naoDeveDetalharAtestadoComAdmin() throws Exception {
+        mvc.perform(get("/atestados/1")
+                        .with(user(usuarioAdmin())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ROLE_FUNCIONARIO deve listar atestados por paciente e receber 200")
     void deveListarAtestadosPorPaciente() throws Exception {
         when(atestadoService.listarPorPaciente(anyLong(), any(Pageable.class), any()))
                 .thenReturn(new PageImpl<>(List.of()));

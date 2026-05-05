@@ -55,6 +55,10 @@ class ProntuarioControllerTest {
         return new Usuario(3L, "admin@test.com", "senha", Perfil.ROLE_ADMIN, null);
     }
 
+    private Usuario usuarioAuditor() {
+        return new Usuario(4L, "auditor@test.com", "senha", Perfil.ROLE_AUDITOR, null);
+    }
+
     private DadosCadastroProntuario dadosCadastro() {
         return new DadosCadastroProntuario(1L, "Paciente relata dor de cabeça", "Sinusite aguda", "J01.9", "Repouso");
     }
@@ -87,7 +91,7 @@ class ProntuarioControllerTest {
     }
 
     @Test
-    @DisplayName("deve listar prontuários para qualquer usuário autenticado")
+    @DisplayName("ROLE_FUNCIONARIO deve listar prontuários e receber 200")
     void deveListarProntuarios() throws Exception {
         when(prontuarioService.listar(any(Pageable.class), any(Usuario.class)))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -98,7 +102,15 @@ class ProntuarioControllerTest {
     }
 
     @Test
-    @DisplayName("deve detalhar prontuário para qualquer usuário autenticado")
+    @DisplayName("ROLE_ADMIN não deve listar prontuários — deve receber 403")
+    void naoDeveListarProntuariosComAdmin() throws Exception {
+        mvc.perform(get("/prontuarios")
+                        .with(user(usuarioAdmin())))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ROLE_FUNCIONARIO deve detalhar prontuário e receber 200")
     void deveDetalharProntuario() throws Exception {
         when(prontuarioService.detalhar(anyLong(), any(Usuario.class))).thenReturn(detalhamento());
 
@@ -135,11 +147,19 @@ class ProntuarioControllerTest {
     }
 
     @Test
-    @DisplayName("ROLE_ADMIN deve inativar prontuário e receber 204")
-    void deveInativarProntuarioComAdmin() throws Exception {
+    @DisplayName("ROLE_AUDITOR deve inativar prontuário e receber 204")
+    void deveInativarProntuarioComAuditor() throws Exception {
+        mvc.perform(delete("/prontuarios/1")
+                        .with(user(usuarioAuditor())).with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("ROLE_ADMIN não deve inativar prontuário — deve receber 403")
+    void naoDeveInativarProntuarioComAdmin() throws Exception {
         mvc.perform(delete("/prontuarios/1")
                         .with(user(usuarioAdmin())).with(csrf()))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isForbidden());
     }
 
     @Test

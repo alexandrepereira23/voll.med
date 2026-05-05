@@ -46,6 +46,10 @@ class AutenticacaoControllerTest {
         return new Usuario(2L, "func@test.com", "senha", Perfil.ROLE_FUNCIONARIO, null);
     }
 
+    private Usuario usuarioAuditor() {
+        return new Usuario(3L, "auditor@test.com", "senha", Perfil.ROLE_AUDITOR, null);
+    }
+
     @Test
     @WithMockUser
     @DisplayName("login válido deve retornar token JWT com 200")
@@ -82,7 +86,27 @@ class AutenticacaoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dados)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.login").value("novo@test.com"));
+                .andExpect(jsonPath("$.login").value("novo@test.com"))
+                .andExpect(jsonPath("$.role").value("ROLE_FUNCIONARIO"));
+    }
+
+    @Test
+    @DisplayName("ROLE_ADMIN deve cadastrar novo usuário AUDITOR e receber 201")
+    void deveCadastrarUsuarioAuditorComAdmin() throws Exception {
+        var novoUsuario = new Usuario(11L, "auditor@test.com", "encodedSenha", Perfil.ROLE_AUDITOR, null);
+
+        when(usuarioRepository.existsByLogin("auditor@test.com")).thenReturn(false);
+        when(passwordEncoder.encode(any())).thenReturn("encodedSenha");
+        when(usuarioRepository.save(any())).thenReturn(novoUsuario);
+
+        var dados = new DadosCadastroUsuario("auditor@test.com", "senha123", Perfil.ROLE_AUDITOR);
+
+        mvc.perform(post("/auth/cadastro")
+                        .with(user(usuarioAdmin())).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dados)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("ROLE_AUDITOR"));
     }
 
     @Test
@@ -118,6 +142,18 @@ class AutenticacaoControllerTest {
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioFuncionario())).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dados)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("ROLE_AUDITOR não deve cadastrar usuário — deve receber 403")
+    void naoDeveCadastrarUsuarioComAuditor() throws Exception {
+        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO);
+
+        mvc.perform(post("/auth/cadastro")
+                        .with(user(usuarioAuditor())).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dados)))
                 .andExpect(status().isForbidden());

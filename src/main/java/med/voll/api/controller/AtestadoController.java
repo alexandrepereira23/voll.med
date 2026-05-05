@@ -48,6 +48,7 @@ public class AtestadoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Detalhar atestado", description = "Retorna os dados de um atestado. Médico vê apenas os seus")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Atestado encontrado"),
@@ -62,6 +63,7 @@ public class AtestadoController {
     }
 
     @GetMapping("/paciente/{pacienteId}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Histórico de atestados do paciente", description = "Lista os atestados de um paciente. Médico vê apenas os que emitiu")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso"),
