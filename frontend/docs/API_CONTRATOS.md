@@ -5,7 +5,7 @@ Auth: `Authorization: Bearer <tokenJWT>` em todas as requisições (exceto `/aut
 
 Perfis de acesso recomendados:
 
-- `ROLE_ADMIN`: administração técnica, cadastro de usuários e parâmetros. Não acessa dados clínicos por padrão.
+- `ROLE_ADMIN`: administração técnica e cadastro de usuários. Não acessa dados clínicos nem cadastros operacionais por padrão.
 - `ROLE_FUNCIONARIO`: operação da clínica, agenda, cadastros e leitura operacional.
 - `ROLE_MEDICO`: atendimento clínico e acesso aos próprios dados assistenciais.
 - `ROLE_AUDITOR`/`ROLE_GESTOR`: leitura ampla, auditoria LGPD e relatórios sensíveis.
@@ -51,7 +51,7 @@ Perfis de acesso recomendados:
 }
 ```
 
-### POST /especialidades (ROLE_ADMIN)
+### POST /especialidades (ROLE_FUNCIONARIO)
 ```ts
 // Request
 { nome: string }
@@ -68,7 +68,7 @@ Perfis de acesso recomendados:
 { id: number, nome: string, ativo: boolean }
 ```
 
-### PUT /especialidades/{id} (ROLE_ADMIN)
+### PUT /especialidades/{id} (ROLE_FUNCIONARIO)
 ```ts
 // Request
 { nome: string }
@@ -77,7 +77,7 @@ Perfis de acesso recomendados:
 { id: number, nome: string, ativo: boolean }
 ```
 
-### DELETE /especialidades/{id} (ROLE_ADMIN)
+### DELETE /especialidades/{id} (ROLE_FUNCIONARIO)
 ```ts
 // Response 204
 ```
@@ -322,34 +322,34 @@ Perfis de acesso recomendados:
 
 ## Convênios
 
-### POST /convenios (ROLE_FUNCIONARIO / ROLE_ADMIN)
+### POST /convenios (ROLE_FUNCIONARIO)
 ```ts
 // Request
 { nome: string, codigoANS: string, tipo: 'PARTICULAR' | 'PLANO' }
 ```
 
-### GET /convenios
+### GET /convenios (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — Page<Convenio>
 ```
 
-### GET /medicos/{id}/convenios
+### GET /medicos/{id}/convenios (ROLE_FUNCIONARIO / ROLE_MEDICO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — Array<ConvenioMedico>
 ```
 
-### POST /medicos/{id}/convenios (ROLE_FUNCIONARIO / ROLE_ADMIN)
+### POST /medicos/{id}/convenios (ROLE_FUNCIONARIO)
 ```ts
 // Request
 { convenioId: number }
 ```
 
-### GET /pacientes/{id}/convenios
+### GET /pacientes/{id}/convenios (ROLE_FUNCIONARIO / ROLE_AUDITOR / ROLE_GESTOR)
 ```ts
 // Response 200 — Array<ConvenioPaciente>
 ```
 
-### POST /pacientes/{id}/convenios (ROLE_FUNCIONARIO / ROLE_ADMIN)
+### POST /pacientes/{id}/convenios (ROLE_FUNCIONARIO)
 ```ts
 // Request
 { convenioId: number, numeroCarteirinha: string, validade: string }

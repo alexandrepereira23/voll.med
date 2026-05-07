@@ -19,7 +19,7 @@ interface FormData {
 
 export function EspecialidadesPage() {
   const { user } = useAuth()
-  const canWrite = user?.role === 'ROLE_ADMIN'
+  const canWrite = user?.role === 'ROLE_FUNCIONARIO'
   const [page, setPage] = useState(0)
   const [data, setData] = useState<Page<Especialidade> | null>(null)
   const [loading, setLoading] = useState(true)

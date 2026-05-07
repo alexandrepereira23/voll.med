@@ -199,7 +199,7 @@ Perfis principais:
 * `ROLE_AUDITOR`
 * `ROLE_GESTOR`
 
-`ROLE_ADMIN` fica voltado à administração técnica e cadastro de usuários. A leitura ampla de dados clínicos sensíveis e trilhas de auditoria fica separada em `ROLE_AUDITOR`/`ROLE_GESTOR`.
+`ROLE_ADMIN` fica voltado à administração técnica e cadastro de usuários. Cadastros operacionais, convênios e parâmetros assistenciais ficam com `ROLE_FUNCIONARIO`; a leitura ampla de dados clínicos sensíveis e trilhas de auditoria fica separada em `ROLE_AUDITOR`/`ROLE_GESTOR`.
 
 ---
 

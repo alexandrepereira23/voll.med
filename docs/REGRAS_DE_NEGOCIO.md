@@ -116,8 +116,8 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | # | Regra | Erro |
 |---|-------|------|
 | 1 | Nome da especialidade deve ser único (case-insensitive) | 409 — Já existe uma especialidade com este nome |
-| 2 | Exclusão é lógica (campo `ativo = false`), restrita a `ROLE_ADMIN` | — |
-| 3 | `GET /especialidades` e `GET /especialidades/{id}` são acessíveis a qualquer usuário autenticado | — |
+| 2 | Inclusão, atualização e exclusão lógica (campo `ativo = false`) são restritas a `ROLE_FUNCIONARIO` | — |
+| 3 | `GET /especialidades` e `GET /especialidades/{id}` são acessíveis a `ROLE_FUNCIONARIO`, `ROLE_MEDICO`, `ROLE_AUDITOR` e `ROLE_GESTOR` | — |
 
 ---
 
@@ -126,7 +126,7 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | # | Regra |
 |---|-------|
 | 1 | Apenas `ROLE_ADMIN` pode criar novos usuários |
-| 2 | `ROLE_ADMIN` é um perfil técnico-administrativo: gerencia usuários, perfis e parâmetros do sistema, mas não acessa dados clínicos por padrão |
+| 2 | `ROLE_ADMIN` é um perfil técnico-administrativo: gerencia usuários operacionais, mas não acessa dados clínicos nem cadastros operacionais por padrão |
 | 3 | Não é possível criar outro `ROLE_ADMIN` via endpoint de cadastro |
 | 4 | `ROLE_AUDITOR` ou `ROLE_GESTOR` deve ser usado para leitura ampla de dados clínicos, auditoria LGPD e relatórios sensíveis |
 | 5 | Senhas armazenadas com BCrypt |
@@ -141,7 +141,7 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 
 Modelo profissional recomendado:
 
-- `ROLE_ADMIN`: administração técnica do sistema, usuários, perfis e parâmetros. Não acessa conteúdo clínico por padrão.
+- `ROLE_ADMIN`: administração técnica do sistema e usuários operacionais. Não acessa conteúdo clínico nem cadastros operacionais por padrão.
 - `ROLE_FUNCIONARIO`: operação administrativa da clínica, cadastros, agenda, convênios e leitura operacional necessária ao atendimento.
 - `ROLE_MEDICO`: atendimento clínico, agenda própria, prontuários próprios, prescrições, atestados e IA clínica.
 - `ROLE_AUDITOR` ou `ROLE_GESTOR`: leitura ampla de dados clínicos, auditoria LGPD e relatórios sensíveis, sempre com registro de acesso.
@@ -149,6 +149,20 @@ Modelo profissional recomendado:
 | Endpoint | ADMIN | FUNCIONARIO | MEDICO | AUDITOR/GESTOR |
 |----------|:-----:|:-----------:|:------:|:--------------:|
 | `POST /auth/cadastro` | ✅ | — | — | — |
+| `POST /especialidades` | — | ✅ | — | — |
+| `PUT /especialidades/{id}` | — | ✅ | — | — |
+| `DELETE /especialidades/{id}` | — | ✅ | — | — |
+| `GET /especialidades` | — | ✅ | ✅ | ✅ |
+| `POST /convenios` | — | ✅ | — | — |
+| `PUT /convenios/{id}` | — | ✅ | — | — |
+| `DELETE /convenios/{id}` | — | ✅ | — | — |
+| `GET /convenios` | — | ✅ | ✅ | ✅ |
+| `POST /medicos/{id}/convenios` | — | ✅ | — | — |
+| `GET /medicos/{id}/convenios` | — | ✅ | ✅ | ✅ |
+| `DELETE /medicos/{id}/convenios/{convenioId}` | — | ✅ | — | — |
+| `POST /pacientes/{id}/convenios` | — | ✅ | — | — |
+| `GET /pacientes/{id}/convenios` | — | ✅ | — | ✅ |
+| `DELETE /pacientes/{id}/convenios/{vinculoId}` | — | ✅ | — | — |
 | `POST /medicos` | — | ✅ | — | — |
 | `PUT /medicos` | — | ✅ | — | — |
 | `DELETE /medicos/{id}` | — | ✅ | — | — |

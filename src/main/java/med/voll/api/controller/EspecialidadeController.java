@@ -26,7 +26,7 @@ public class EspecialidadeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Cadastrar especialidade", description = "Cria uma nova especialidade médica")
     public ResponseEntity<DadosDetalhamentoEspecialidade> cadastrar(
             @RequestBody @Valid DadosCadastroEspecialidade dados,
@@ -37,6 +37,7 @@ public class EspecialidadeController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Listar especialidades", description = "Retorna todas as especialidades ativas (paginado)")
     public ResponseEntity<Page<DadosListagemEspecialidade>> listar(
             @ParameterObject @PageableDefault(size = 20) Pageable paginacao) {
@@ -44,13 +45,14 @@ public class EspecialidadeController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Detalhar especialidade", description = "Retorna os detalhes de uma especialidade")
     public ResponseEntity<DadosDetalhamentoEspecialidade> detalhar(@PathVariable Long id) {
         return ResponseEntity.ok(especialidadeService.detalhar(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Atualizar especialidade", description = "Atualiza o nome de uma especialidade")
     public ResponseEntity<DadosDetalhamentoEspecialidade> atualizar(
             @PathVariable Long id,
@@ -59,7 +61,7 @@ public class EspecialidadeController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Inativar especialidade", description = "Realiza exclusão lógica de uma especialidade")
     public ResponseEntity<Void> inativar(@PathVariable Long id) {
         especialidadeService.inativar(id);

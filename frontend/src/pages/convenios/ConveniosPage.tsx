@@ -23,7 +23,7 @@ interface FormData {
 
 export function ConveniosPage() {
   const { user } = useAuth()
-  const canWrite = user?.role === 'ROLE_FUNCIONARIO' || user?.role === 'ROLE_ADMIN'
+  const canWrite = user?.role === 'ROLE_FUNCIONARIO'
   const [page, setPage] = useState(0)
   const [data, setData] = useState<Page<Convenio> | null>(null)
   const [loading, setLoading] = useState(true)

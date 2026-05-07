@@ -28,7 +28,7 @@ public class ConvenioPacienteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_FUNCIONARIO')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Associar convênio ao paciente", description = "Vincula um convênio ao cadastro do paciente")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Convênio associado com sucesso"),
@@ -47,6 +47,7 @@ public class ConvenioPacienteController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Listar convênios do paciente", description = "Lista todos os convênios ativos de um paciente")
     @ApiResponse(responseCode = "200", description = "Lista retornada com sucesso")
     public ResponseEntity<Page<DadosDetalhamentoConvenioPaciente>> listar(
@@ -57,7 +58,7 @@ public class ConvenioPacienteController {
     }
 
     @DeleteMapping("/{convenioPacienteId}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_FUNCIONARIO')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Remover convênio do paciente", description = "Remove (inativa) o vínculo de convênio do paciente")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "Vínculo removido"),

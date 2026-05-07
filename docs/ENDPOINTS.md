@@ -4,7 +4,7 @@ Todos os endpoints exigem autenticação via JWT (`Authorization: Bearer <token>
 
 Perfis recomendados para ambiente profissional:
 
-- `ADMIN`: administração técnica, usuários, perfis e parâmetros. Não acessa dados clínicos por padrão.
+- `ADMIN`: administração técnica e cadastro de usuários. Não acessa dados clínicos nem cadastros operacionais por padrão.
 - `FUNCIONARIO`: operação da clínica, cadastros, agenda, convênios e leitura operacional.
 - `MEDICO`: atendimento clínico e acesso aos próprios dados assistenciais.
 - `AUDITOR`/`GESTOR`: leitura ampla, auditoria LGPD e relatórios sensíveis, sempre com rastreabilidade.
@@ -24,11 +24,11 @@ Perfis recomendados para ambiente profissional:
 
 | Método | Endpoint | Descrição | Roles |
 |--------|----------|-----------|-------|
-| `POST` | `/especialidades` | Cadastrar especialidade | ADMIN |
+| `POST` | `/especialidades` | Cadastrar especialidade | FUNCIONARIO |
 | `GET` | `/especialidades` | Listar especialidades ativas (paginado) | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
 | `GET` | `/especialidades/{id}` | Detalhar especialidade | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
-| `PUT` | `/especialidades/{id}` | Atualizar nome | ADMIN |
-| `DELETE` | `/especialidades/{id}` | Inativar (soft delete) | ADMIN |
+| `PUT` | `/especialidades/{id}` | Atualizar nome | FUNCIONARIO |
+| `DELETE` | `/especialidades/{id}` | Inativar (soft delete) | FUNCIONARIO |
 
 ---
 
@@ -156,6 +156,24 @@ Perfis recomendados para ambiente profissional:
 
 ---
 
+## Convênios
+
+| Método | Endpoint | Descrição | Roles |
+|--------|----------|-----------|-------|
+| `POST` | `/convenios` | Cadastrar convênio | FUNCIONARIO |
+| `GET` | `/convenios` | Listar convênios ativos (paginado) | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
+| `GET` | `/convenios/{id}` | Detalhar convênio | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
+| `PUT` | `/convenios/{id}` | Atualizar convênio | FUNCIONARIO |
+| `DELETE` | `/convenios/{id}` | Inativar convênio | FUNCIONARIO |
+| `POST` | `/medicos/{id}/convenios` | Vincular convênio aceito pelo médico | FUNCIONARIO |
+| `GET` | `/medicos/{id}/convenios` | Listar convênios aceitos pelo médico | FUNCIONARIO, MEDICO, AUDITOR/GESTOR |
+| `DELETE` | `/medicos/{id}/convenios/{convenioId}` | Desvincular convênio do médico | FUNCIONARIO |
+| `POST` | `/pacientes/{id}/convenios` | Associar convênio ao paciente | FUNCIONARIO |
+| `GET` | `/pacientes/{id}/convenios` | Listar convênios do paciente | FUNCIONARIO, AUDITOR/GESTOR |
+| `DELETE` | `/pacientes/{id}/convenios/{vinculoId}` | Remover convênio do paciente | FUNCIONARIO |
+
+---
+
 ## IA Clínica
 
 > Todos os endpoints de IA exigem `ROLE_MEDICO`.
@@ -199,7 +217,7 @@ Perfis recomendados para ambiente profissional:
 |--------|----------|-----------|-------|
 | `GET` | `/auditoria/**` | Consultar trilhas de acesso e eventos sensíveis | AUDITOR/GESTOR |
 
-`ROLE_ADMIN` pode configurar usuários e parâmetros, mas não deve consultar conteúdo clínico ou trilhas clínicas por padrão.
+`ROLE_ADMIN` pode cadastrar usuários operacionais, mas não deve consultar conteúdo clínico, trilhas clínicas ou cadastros operacionais por padrão.
 
 ---
 

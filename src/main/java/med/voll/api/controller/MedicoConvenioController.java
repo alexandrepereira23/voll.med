@@ -33,7 +33,7 @@ public class MedicoConvenioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_FUNCIONARIO')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Vincular convênio ao médico", description = "Associa um convênio à lista de planos aceitos pelo médico")
     public ResponseEntity<DadosDetalhamentoConvenioMedico> vincular(
             @PathVariable Long medicoId,
@@ -65,6 +65,7 @@ public class MedicoConvenioController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Listar convênios do médico", description = "Lista todos os convênios ativos aceitos pelo médico")
     public ResponseEntity<List<DadosDetalhamentoConvenioMedico>> listar(@PathVariable Long medicoId) {
         var vinculos = medicoConvenioRepository.findAllByMedicoIdAndAtivoTrue(medicoId)
@@ -75,7 +76,7 @@ public class MedicoConvenioController {
     }
 
     @DeleteMapping("/{convenioId}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_FUNCIONARIO')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Desvincular convênio do médico", description = "Remove a associação entre o médico e o convênio")
     public ResponseEntity<Void> desvincular(
             @PathVariable Long medicoId,

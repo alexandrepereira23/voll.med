@@ -28,7 +28,7 @@ public class ConvenioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_FUNCIONARIO')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Cadastrar convênio", description = "Cadastra um novo convênio ou plano de saúde")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Convênio cadastrado com sucesso"),
@@ -44,6 +44,7 @@ public class ConvenioController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Listar convênios", description = "Lista convênios ativos com paginação")
     public ResponseEntity<Page<DadosListagemConvenio>> listar(
             @ParameterObject @PageableDefault(size = 10, sort = "nome") Pageable pageable
@@ -52,6 +53,7 @@ public class ConvenioController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_FUNCIONARIO', 'ROLE_MEDICO', 'ROLE_AUDITOR', 'ROLE_GESTOR')")
     @Operation(summary = "Detalhar convênio", description = "Retorna os dados de um convênio")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Convênio encontrado"),
@@ -62,7 +64,7 @@ public class ConvenioController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_FUNCIONARIO')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Atualizar convênio", description = "Atualiza o nome do convênio")
     @ApiResponse(responseCode = "200", description = "Convênio atualizado")
     public ResponseEntity<DadosDetalhamentoConvenio> atualizar(
@@ -73,7 +75,7 @@ public class ConvenioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ROLE_FUNCIONARIO')")
     @Operation(summary = "Inativar convênio", description = "Inativa um convênio (exclusão lógica)")
     @ApiResponse(responseCode = "204", description = "Convênio inativado")
     public ResponseEntity<Void> inativar(@PathVariable Long id) {
