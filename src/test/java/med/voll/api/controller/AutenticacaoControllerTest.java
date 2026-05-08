@@ -79,7 +79,7 @@ class AutenticacaoControllerTest {
         when(passwordEncoder.encode(any())).thenReturn("encodedSenha");
         when(usuarioRepository.save(any())).thenReturn(novoUsuario);
 
-        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO);
+        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO, null);
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioAdmin())).with(csrf())
@@ -99,7 +99,7 @@ class AutenticacaoControllerTest {
         when(passwordEncoder.encode(any())).thenReturn("encodedSenha");
         when(usuarioRepository.save(any())).thenReturn(novoUsuario);
 
-        var dados = new DadosCadastroUsuario("auditor@test.com", "senha123", Perfil.ROLE_AUDITOR);
+        var dados = new DadosCadastroUsuario("auditor@test.com", "senha123", Perfil.ROLE_AUDITOR, null);
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioAdmin())).with(csrf())
@@ -112,7 +112,7 @@ class AutenticacaoControllerTest {
     @Test
     @DisplayName("ROLE_ADMIN não deve criar outro ROLE_ADMIN — deve receber 403")
     void naoDeveCadastrarOutroAdmin() throws Exception {
-        var dados = new DadosCadastroUsuario("outro@test.com", "senha123", Perfil.ROLE_ADMIN);
+        var dados = new DadosCadastroUsuario("outro@test.com", "senha123", Perfil.ROLE_ADMIN, null);
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioAdmin())).with(csrf())
@@ -126,7 +126,7 @@ class AutenticacaoControllerTest {
     void deveRetornar409QuandoLoginJaExiste() throws Exception {
         when(usuarioRepository.existsByLogin("func@test.com")).thenReturn(true);
 
-        var dados = new DadosCadastroUsuario("func@test.com", "senha123", Perfil.ROLE_FUNCIONARIO);
+        var dados = new DadosCadastroUsuario("func@test.com", "senha123", Perfil.ROLE_FUNCIONARIO, null);
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioAdmin())).with(csrf())
@@ -138,7 +138,7 @@ class AutenticacaoControllerTest {
     @Test
     @DisplayName("ROLE_FUNCIONARIO não deve cadastrar usuário — deve receber 403")
     void naoDeveCadastrarUsuarioComFuncionario() throws Exception {
-        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO);
+        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO, null);
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioFuncionario())).with(csrf())
@@ -150,7 +150,7 @@ class AutenticacaoControllerTest {
     @Test
     @DisplayName("ROLE_AUDITOR não deve cadastrar usuário — deve receber 403")
     void naoDeveCadastrarUsuarioComAuditor() throws Exception {
-        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO);
+        var dados = new DadosCadastroUsuario("novo@test.com", "senha123", Perfil.ROLE_FUNCIONARIO, null);
 
         mvc.perform(post("/auth/cadastro")
                         .with(user(usuarioAuditor())).with(csrf())

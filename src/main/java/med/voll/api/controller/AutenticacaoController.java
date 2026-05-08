@@ -4,6 +4,7 @@ package med.voll.api.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import med.voll.api.domain.medico.MedicoRepository;
 import med.voll.api.domain.usuario.DadosAutenticacao;
 import med.voll.api.domain.usuario.DadosCadastroUsuario;
 import med.voll.api.domain.usuario.DadosDetalhamentoUsuario;
@@ -12,6 +13,9 @@ import med.voll.api.domain.usuario.Usuario;
 import med.voll.api.domain.usuario.UsuarioRepository;
 import med.voll.api.infra.security.DadosTokenJWT;
 import med.voll.api.infra.security.TokenService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,23 +33,25 @@ public class AutenticacaoController {
     private final TokenService tokenService;
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final MedicoRepository medicoRepository;
 
     public AutenticacaoController(AuthenticationManager manager,
                                   TokenService tokenService,
                                   UsuarioRepository usuarioRepository,
-                                  PasswordEncoder passwordEncoder) {
+                                  PasswordEncoder passwordEncoder,
+                                  MedicoRepository medicoRepository) {
         this.manager = manager;
         this.tokenService = tokenService;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.medicoRepository = medicoRepository;
     }
 
     @PostMapping("/login")
     @Operation(summary = "Autenticar usuário", description = "Realiza a autenticação do usuário e retorna o token JWT")
-    public ResponseEntity<DadosTokenJWT> autenticar(@RequestBody @Valid DadosAutenticacao dados){
+    public ResponseEntity<DadosTokenJWT> autenticar(@RequestBody @Valid DadosAutenticacao dados) {
         var authenticationToken = new UsernamePasswordAuthenticationToken(dados.login(), dados.senha());
         var authentication = manager.authenticate(authenticationToken);
-
         var tokenJWT = tokenService.gerarToken((Usuario) authentication.getPrincipal());
         return ResponseEntity.ok(new DadosTokenJWT(tokenJWT));
     }
@@ -66,9 +72,25 @@ public class AutenticacaoController {
         usuario.setLogin(dados.login());
         usuario.setSenha(passwordEncoder.encode(dados.senha()));
         usuario.setRole(dados.role());
-
         usuario = usuarioRepository.save(usuario);
 
+        if (dados.role() == Perfil.ROLE_MEDICO && dados.medicoId() != null) {
+            final var usuarioSalvo = usuario;
+            medicoRepository.findById(dados.medicoId()).ifPresent(medico -> {
+                medico.setUsuario(usuarioSalvo);
+                medicoRepository.save(medico);
+            });
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(new DadosDetalhamentoUsuario(usuario));
+    }
+
+    @GetMapping("/usuarios")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @Operation(summary = "Listar usuários", description = "Retorna todos os usuários cadastrados. Requer perfil ADMIN.")
+    public ResponseEntity<Page<DadosDetalhamentoUsuario>> listar(
+            @PageableDefault(size = 10, sort = "login") Pageable pageable) {
+        var page = usuarioRepository.findAll(pageable).map(DadosDetalhamentoUsuario::new);
+        return ResponseEntity.ok(page);
     }
 }

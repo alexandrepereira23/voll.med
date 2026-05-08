@@ -39,6 +39,7 @@ public class Medico {
 
     @OneToOne
     @JoinColumn(name = "usuario_id")
+    @Setter
     private Usuario usuario;
 
     @CreatedDate

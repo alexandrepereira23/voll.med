@@ -11,5 +11,7 @@ public record DadosCadastroUsuario(
         @Size(min = 8, max = 128, message = "Senha deve ter entre 8 e 128 caracteres")
         String senha,
         @NotNull
-        Perfil role) {
+        Perfil role,
+        Long medicoId
+) {
 }
