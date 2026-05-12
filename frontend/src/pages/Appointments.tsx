@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
 import { SearchInput } from '@/components/SearchInput';
@@ -30,48 +30,185 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { formatters, searchInArray, statusLabels } from '@/lib/utils';
-import {
-  mockAppointments,
-  mockPatients,
-  mockDoctors,
-  mockInsurance,
-  Appointment,
-} from '@/lib/mockData';
-import { Calendar, Edit, Trash2 } from 'lucide-react';
+import { Calendar, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { consultasApi } from '@/api/consultas';
+import { medicosApi } from '@/api/medicos';
+import { pacientesApi } from '@/api/pacientes';
+import { conveniosApi } from '@/api/convenios';
+import { useAuth } from '@/hooks/useAuth';
+import { canWrite } from '@/lib/rbac';
+import { extractApiError } from '@/lib/utils';
+import type {
+  ConsultaListagem,
+  ConsultaAgendamento,
+  ConsultaCancelamento,
+  MotivoCancelamento,
+  Prioridade,
+  MedicoListagem,
+  PacienteListagem,
+  ConvenioListagem,
+} from '@/types/api';
+
+const prioridadeLabel: Record<Prioridade, string> = {
+  ROTINA: 'Rotina',
+  PRIORITARIO: 'Prioritário',
+  URGENCIA: 'Urgência',
+};
+
+const prioridadeBadge: Record<Prioridade, 'success' | 'warning' | 'error'> = {
+  ROTINA: 'success',
+  PRIORITARIO: 'warning',
+  URGENCIA: 'error',
+};
+
+const motivoLabel: Record<MotivoCancelamento, string> = {
+  PACIENTE_DESISTIU: 'Paciente desistiu',
+  MEDICO_CANCELOU: 'Médico cancelou',
+  OUTROS: 'Outros',
+};
+
+interface ScheduleForm {
+  idPaciente: string
+  idMedico: string
+  dateInput: string
+  timeInput: string
+  prioridade: Prioridade | ''
+  convenioId: string
+}
+
+const emptyScheduleForm = (): ScheduleForm => ({
+  idPaciente: '',
+  idMedico: '',
+  dateInput: '',
+  timeInput: '',
+  prioridade: '',
+  convenioId: '',
+});
 
 export default function Appointments() {
+  const { user } = useAuth();
+  const allowWrite = canWrite(user?.role);
+
+  const [appointments, setAppointments] = useState<ConsultaListagem[]>([]);
+  const [doctors, setDoctors] = useState<MedicoListagem[]>([]);
+  const [patients, setPatients] = useState<PacienteListagem[]>([]);
+  const [convenios, setConvenios] = useState<ConvenioListagem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
-  const [formData, setFormData] = useState<Partial<Appointment>>({});
 
-  const filteredAppointments = searchInArray(
-    mockAppointments,
-    search,
-    []
-  );
+  // Schedule modal
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState<ScheduleForm>(emptyScheduleForm());
+  const [scheduling, setScheduling] = useState(false);
 
-  const handleOpenModal = (appointment?: Appointment) => {
-    if (appointment) {
-      setEditingAppointment(appointment);
-      setFormData(appointment);
-    } else {
-      setEditingAppointment(null);
-      setFormData({});
+  // Cancel modal
+  const [isCancelOpen, setIsCancelOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<ConsultaListagem | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState<MotivoCancelamento | ''>('');
+  const [cancelling, setCancelling] = useState(false);
+
+  const fetchAll = async (p = page) => {
+    setLoading(true);
+    try {
+      const [appts, docs, pats, convs] = await Promise.all([
+        consultasApi.list(p),
+        medicosApi.list(0, 100),
+        pacientesApi.list(0, 100),
+        conveniosApi.listAll(),
+      ]);
+      setAppointments(appts.content);
+      setTotalPages(appts.totalPages);
+      setDoctors(docs.content);
+      setPatients(pats.content);
+      setConvenios(convs);
+    } catch {
+      toast.error('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
     }
-    setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingAppointment(null);
-    setFormData({});
+  useEffect(() => {
+    fetchAll(page);
+  }, [page]);
+
+  const filteredAppointments = search.trim()
+    ? appointments.filter(a =>
+        [a.nomePaciente, a.nomeMedico]
+          .some(v => v?.toLowerCase().includes(search.toLowerCase()))
+      )
+    : appointments;
+
+  const handleSchedule = async () => {
+    if (!scheduleForm.idPaciente || !scheduleForm.dateInput || !scheduleForm.timeInput) {
+      toast.error('Preencha paciente, data e hora');
+      return;
+    }
+    const isoData = `${scheduleForm.dateInput}T${scheduleForm.timeInput}:00`;
+    if (new Date(isoData) <= new Date()) {
+      toast.error('A data deve ser futura');
+      return;
+    }
+    setScheduling(true);
+    try {
+      const payload: ConsultaAgendamento = {
+        idPaciente: Number(scheduleForm.idPaciente),
+        data: isoData,
+        ...(scheduleForm.idMedico && scheduleForm.idMedico !== 'none' && { idMedico: Number(scheduleForm.idMedico) }),
+        ...(scheduleForm.prioridade && { prioridade: scheduleForm.prioridade }),
+        ...(scheduleForm.convenioId && scheduleForm.convenioId !== 'none' && { convenioId: Number(scheduleForm.convenioId) }),
+      };
+      await consultasApi.schedule(payload);
+      toast.success('Consulta agendada com sucesso');
+      setIsScheduleOpen(false);
+      setScheduleForm(emptyScheduleForm());
+      setPage(0);
+      fetchAll(0);
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao agendar consulta'));
+    } finally {
+      setScheduling(false);
+    }
   };
 
-  const handleSave = () => {
-    handleCloseModal();
+  const handleOpenCancel = (apt: ConsultaListagem) => {
+    setCancelTarget(apt);
+    setCancelMotivo('');
+    setIsCancelOpen(true);
+  };
+
+  const handleCancel = async () => {
+    if (!cancelTarget || !cancelMotivo) {
+      toast.error('Selecione o motivo do cancelamento');
+      return;
+    }
+    setCancelling(true);
+    try {
+      const payload: ConsultaCancelamento = {
+        idConsulta: cancelTarget.id,
+        motivo: cancelMotivo,
+      };
+      await consultasApi.cancel(payload);
+      toast.success('Consulta cancelada com sucesso');
+      setIsCancelOpen(false);
+      setCancelTarget(null);
+      fetchAll(page);
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao cancelar consulta'));
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const formatDateTime = (iso: string) => {
+    const d = new Date(iso);
+    return {
+      date: d.toLocaleDateString('pt-BR'),
+      time: d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    };
   };
 
   return (
@@ -82,20 +219,24 @@ export default function Appointments() {
           title="Consultas"
           description="Agende e gerencie consultas médicas"
           actionLabel="Nova consulta"
-          onAction={() => handleOpenModal()}
+          onAction={allowWrite ? () => { setScheduleForm(emptyScheduleForm()); setIsScheduleOpen(true); } : undefined}
         />
 
         <Card className="border-border">
           <div className="p-6">
             <SearchInput
-              placeholder="Buscar consultas..."
+              placeholder="Buscar por paciente ou médico..."
               value={search}
               onChange={setSearch}
             />
           </div>
         </Card>
 
-        {filteredAppointments.length > 0 ? (
+        {loading ? (
+          <Card className="border-border p-12 text-center text-muted-foreground">
+            Carregando...
+          </Card>
+        ) : filteredAppointments.length > 0 ? (
           <Card className="border-border overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -105,263 +246,239 @@ export default function Appointments() {
                     <TableHead>Médico</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Hora</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Prioridade</TableHead>
-                    <TableHead>Ações</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    {allowWrite && <TableHead>Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAppointments.map((appointment) => {
-                    const patient = mockPatients.find(
-                      (p) => p.id === appointment.patientId
-                    );
-                    const doctor = mockDoctors.find(
-                      (d) => d.id === appointment.doctorId
-                    );
-
-                    const statusLabel = statusLabels[appointment.status as keyof typeof statusLabels];
-                    const typeLabel = statusLabels[appointment.type as keyof typeof statusLabels];
-                    const priorityLabel = statusLabels[appointment.priority as keyof typeof statusLabels];
-
+                  {filteredAppointments.map((apt) => {
+                    const { date, time } = formatDateTime(apt.dataHora);
                     return (
-                      <TableRow key={appointment.id}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <p>{patient?.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatters.cpf(patient?.cpf || '')}
-                            </p>
-                          </div>
-                        </TableCell>
+                      <TableRow key={apt.id}>
+                        <TableCell className="font-medium">{apt.nomePaciente}</TableCell>
+                        <TableCell>{apt.nomeMedico}</TableCell>
+                        <TableCell>{date}</TableCell>
+                        <TableCell>{time}</TableCell>
                         <TableCell>
-                          <div>
-                            <p>{doctor?.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {doctor?.specialty}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatters.date(appointment.date)}</TableCell>
-                        <TableCell>{appointment.time}</TableCell>
-                        <TableCell>
-                          <Badge variant="info">{typeLabel}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="default">{statusLabel}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              appointment.priority === 'high'
-                                ? 'error'
-                                : appointment.priority === 'medium'
-                                ? 'warning'
-                                : 'success'
-                            }
-                          >
-                            {priorityLabel}
+                          <Badge variant={prioridadeBadge[apt.prioridade]}>
+                            {prioridadeLabel[apt.prioridade]}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                        <TableCell>{apt.tipo}</TableCell>
+                        {allowWrite && (
+                          <TableCell>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleOpenModal(appointment)}
+                              onClick={() => handleOpenCancel(apt)}
+                              title="Cancelar consulta"
                             >
-                              <Edit className="h-4 w-4" />
+                              <XCircle className="h-4 w-4 text-destructive" />
                             </Button>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t px-6 py-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Página {page + 1} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </Card>
         ) : (
           <EmptyState
             icon={Calendar}
-            title="Nenhuma consulta agendada"
-            description="Agende a primeira consulta para começar a gerenciar os atendimentos."
-            actionLabel="Nova consulta"
-            onAction={() => handleOpenModal()}
+            title="Nenhuma consulta encontrada"
+            description={search ? 'Nenhum resultado para a busca.' : 'Agende a primeira consulta para começar.'}
+            actionLabel={allowWrite ? 'Nova consulta' : undefined}
+            onAction={allowWrite ? () => { setScheduleForm(emptyScheduleForm()); setIsScheduleOpen(true); } : undefined}
           />
         )}
       </div>
 
-      {/* Form Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      {/* Schedule Modal */}
+      <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingAppointment ? 'Editar Consulta' : 'Nova Consulta'}
-            </DialogTitle>
-            <DialogDescription>
-              Preencha os dados da consulta abaixo
-            </DialogDescription>
+            <DialogTitle>Nova Consulta</DialogTitle>
+            <DialogDescription>Preencha os dados para agendar uma consulta</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Appointment Data */}
+          <div className="space-y-8">
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-foreground">
-                Dados da Consulta
-              </h3>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <h3 className="text-sm font-semibold mb-5 text-foreground">Dados da Consulta</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <Label htmlFor="patient">Paciente</Label>
+                  <Label className="mb-1.5 block" htmlFor="idPaciente">Paciente *</Label>
                   <Select
-                    value={formData.patientId || ''}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, patientId: value })
-                    }
+                    value={scheduleForm.idPaciente}
+                    onValueChange={v => setScheduleForm(p => ({ ...p, idPaciente: v }))}
                   >
-                    <SelectTrigger id="patient">
+                    <SelectTrigger id="idPaciente">
                       <SelectValue placeholder="Selecione um paciente" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockPatients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
-                          {patient.name} - CPF: {formatters.cpf(patient.cpf)}
+                      {patients.map(pat => (
+                        <SelectItem key={pat.id} value={String(pat.id)}>
+                          {pat.nome} — CPF: {pat.cpf}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="doctor">Médico</Label>
+                  <Label className="mb-1.5 block" htmlFor="idMedico">Médico (opcional — se não informado, o sistema escolhe)</Label>
                   <Select
-                    value={formData.doctorId || ''}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, doctorId: value })
-                    }
+                    value={scheduleForm.idMedico}
+                    onValueChange={v => setScheduleForm(p => ({ ...p, idMedico: v }))}
                   >
-                    <SelectTrigger id="doctor">
-                      <SelectValue placeholder="Selecione um médico" />
+                    <SelectTrigger id="idMedico">
+                      <SelectValue placeholder="Qualquer médico disponível" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockDoctors.map((doctor) => (
-                        <SelectItem key={doctor.id} value={doctor.id}>
-                          {doctor.name} - CRM: {doctor.crm} ({doctor.specialty})
+                      <SelectItem value="none">Qualquer médico disponível</SelectItem>
+                      {doctors.map(doc => (
+                        <SelectItem key={doc.id} value={String(doc.id)}>
+                          {doc.nome} — {doc.especialidade} (CRM {doc.crm})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="date">Data</Label>
+                  <Label className="mb-1.5 block" htmlFor="dateInput">Data *</Label>
                   <Input
-                    id="date"
+                    id="dateInput"
                     type="date"
-                    value={formData.date || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
+                    value={scheduleForm.dateInput}
+                    onChange={e => setScheduleForm(p => ({ ...p, dateInput: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="time">Hora</Label>
+                  <Label className="mb-1.5 block" htmlFor="timeInput">Hora * (07:00 – 18:30)</Label>
                   <Input
-                    id="time"
+                    id="timeInput"
                     type="time"
-                    value={formData.time || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, time: e.target.value })
-                    }
+                    value={scheduleForm.timeInput}
+                    onChange={e => setScheduleForm(p => ({ ...p, timeInput: e.target.value }))}
+                    min="07:00"
+                    max="18:30"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="type">Tipo</Label>
+                  <Label className="mb-1.5 block" htmlFor="prioridade">Prioridade</Label>
                   <Select
-                    value={formData.type || ''}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        type: value as 'consultation' | 'return' | 'teleconsultation',
-                      })
-                    }
+                    value={scheduleForm.prioridade}
+                    onValueChange={v => setScheduleForm(p => ({ ...p, prioridade: v as Prioridade }))}
                   >
-                    <SelectTrigger id="type">
-                      <SelectValue placeholder="Selecione o tipo" />
+                    <SelectTrigger id="prioridade">
+                      <SelectValue placeholder="Rotina (padrão)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="consultation">Consulta</SelectItem>
-                      <SelectItem value="return">Retorno</SelectItem>
-                      <SelectItem value="teleconsultation">Teleconsulta</SelectItem>
+                      <SelectItem value="ROTINA">Rotina</SelectItem>
+                      <SelectItem value="PRIORITARIO">Prioritário</SelectItem>
+                      <SelectItem value="URGENCIA">Urgência</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="priority">Prioridade</Label>
+                  <Label className="mb-1.5 block" htmlFor="convenioId">Convênio</Label>
                   <Select
-                    value={formData.priority || ''}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        priority: value as 'routine' | 'medium' | 'high',
-                      })
-                    }
+                    value={scheduleForm.convenioId}
+                    onValueChange={v => setScheduleForm(p => ({ ...p, convenioId: v }))}
                   >
-                    <SelectTrigger id="priority">
-                      <SelectValue placeholder="Selecione a prioridade" />
+                    <SelectTrigger id="convenioId">
+                      <SelectValue placeholder="Particular (sem convênio)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="routine">Rotina</SelectItem>
-                      <SelectItem value="medium">Média</SelectItem>
-                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="none">Particular</SelectItem>
+                      {convenios.map(c => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.nome}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div>
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status || ''}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        status: value as 'scheduled' | 'confirmed' | 'cancelled' | 'completed',
-                      })
-                    }
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="scheduled">Agendada</SelectItem>
-                      <SelectItem value="confirmed">Confirmada</SelectItem>
-                      <SelectItem value="cancelled">Cancelada</SelectItem>
-                      <SelectItem value="completed">Finalizada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    placeholder="Observações adicionais"
-                    rows={3}
-                  />
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={handleCloseModal}>
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setIsScheduleOpen(false)} disabled={scheduling}>
                 Cancelar
               </Button>
-              <Button onClick={handleSave}>
-                {editingAppointment ? 'Atualizar' : 'Agendar'}
+              <Button onClick={handleSchedule} disabled={scheduling}>
+                {scheduling ? 'Agendando...' : 'Agendar Consulta'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Modal */}
+      <Dialog open={isCancelOpen} onOpenChange={setIsCancelOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Cancelar Consulta</DialogTitle>
+            <DialogDescription>
+              {cancelTarget && (
+                <>Consulta de <strong>{cancelTarget.nomePaciente}</strong> com <strong>{cancelTarget.nomeMedico}</strong></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-1.5 block" htmlFor="motivo">Motivo do cancelamento *</Label>
+              <Select
+                value={cancelMotivo}
+                onValueChange={v => setCancelMotivo(v as MotivoCancelamento)}
+              >
+                <SelectTrigger id="motivo">
+                  <SelectValue placeholder="Selecione o motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(motivoLabel) as MotivoCancelamento[]).map(m => (
+                    <SelectItem key={m} value={m}>
+                      {motivoLabel[m]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2 border-t">
+              <Button variant="outline" onClick={() => setIsCancelOpen(false)} disabled={cancelling}>
+                Voltar
+              </Button>
+              <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
+                {cancelling ? 'Cancelando...' : 'Confirmar Cancelamento'}
               </Button>
             </div>
           </div>

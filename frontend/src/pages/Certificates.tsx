@@ -1,9 +1,16 @@
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
-import { SearchInput } from '@/components/SearchInput';
 import { EmptyState } from '@/components/EmptyState';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -12,13 +19,37 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockCertificates, mockPatients, mockDoctors } from '@/lib/mockData';
-import { formatters } from '@/lib/utils';
-import { FileText, Eye, Printer, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { FileText } from 'lucide-react';
+import { toast } from 'sonner';
+import { atestadosApi } from '@/api/atestados';
+import { pacientesApi } from '@/api/pacientes';
+import type { AtestadoListagem, PacienteListagem } from '@/types/api';
 
 export default function Certificates() {
-  const [search, setSearch] = useState('');
+  const [patients, setPatients] = useState<PacienteListagem[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [certs, setCerts] = useState<AtestadoListagem[]>([]);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [loadingCerts, setLoadingCerts] = useState(false);
+
+  useEffect(() => {
+    setLoadingPatients(true);
+    pacientesApi.list(0, 100)
+      .then(r => setPatients(r.content))
+      .catch(() => toast.error('Erro ao carregar pacientes'))
+      .finally(() => setLoadingPatients(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) { setCerts([]); return; }
+    setLoadingCerts(true);
+    atestadosApi.listByPaciente(Number(selectedId))
+      .then(r => setCerts(r.content))
+      .catch(() => toast.error('Erro ao carregar atestados'))
+      .finally(() => setLoadingCerts(false));
+  }, [selectedId]);
+
+  const selectedPatient = patients.find(p => String(p.id) === selectedId);
 
   return (
     <DashboardLayout>
@@ -26,82 +57,77 @@ export default function Certificates() {
         <PageHeader
           icon={FileText}
           title="Atestados"
-          description="Emita e consulte atestados médicos dos pacientes"
-          actionLabel="Novo atestado"
-          onAction={() => {}}
+          description="Consulte atestados médicos por paciente"
         />
 
         <Card className="border-border">
           <div className="p-6">
-            <SearchInput
-              placeholder="Buscar por paciente, CPF ou médico..."
-              value={search}
-              onChange={setSearch}
-            />
+            <Label htmlFor="paciente" className="mb-2 block">Selecione o paciente</Label>
+            <Select
+              value={selectedId}
+              onValueChange={setSelectedId}
+              disabled={loadingPatients}
+            >
+              <SelectTrigger id="paciente" className="max-w-sm">
+                <SelectValue placeholder={loadingPatients ? 'Carregando...' : 'Selecione um paciente'} />
+              </SelectTrigger>
+              <SelectContent>
+                {patients.map(p => (
+                  <SelectItem key={p.id} value={String(p.id)}>
+                    {p.nome} — {p.cpf}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </Card>
 
-        {mockCertificates.length > 0 ? (
+        {loadingCerts ? (
+          <Card className="border-border p-12 text-center text-muted-foreground">Carregando...</Card>
+        ) : selectedId && certs.length > 0 ? (
           <Card className="border-border overflow-hidden">
+            <div className="px-6 py-3 border-b bg-muted/30">
+              <p className="text-sm font-medium">Atestados de {selectedPatient?.nome}</p>
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Paciente</TableHead>
-                    <TableHead>Médico</TableHead>
+                    <TableHead>ID</TableHead>
                     <TableHead>Data de Emissão</TableHead>
                     <TableHead>Dias de Afastamento</TableHead>
-                    <TableHead>CID</TableHead>
-                    <TableHead>Ações</TableHead>
+                    <TableHead>Prontuário #</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockCertificates.map((certificate) => {
-                    const patient = mockPatients.find(
-                      (p) => p.id === certificate.patientId
-                    );
-                    const doctor = mockDoctors.find(
-                      (d) => d.id === certificate.doctorId
-                    );
-
-                    return (
-                      <TableRow key={certificate.id}>
-                        <TableCell className="font-medium">
-                          {patient?.name}
-                        </TableCell>
-                        <TableCell>{doctor?.name}</TableCell>
-                        <TableCell>{formatters.date(certificate.issueDate)}</TableCell>
-                        <TableCell>{certificate.daysOff}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {certificate.cid || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Printer className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {certs.map(cert => (
+                    <TableRow key={cert.id}>
+                      <TableCell>#{cert.id}</TableCell>
+                      <TableCell>
+                        {new Date(cert.dataEmissao).toLocaleDateString('pt-BR')}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{cert.diasAfastamento}</span>
+                        <span className="text-muted-foreground text-sm"> dia{cert.diasAfastamento !== 1 ? 's' : ''}</span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">#{cert.prontuarioId}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
           </Card>
+        ) : selectedId && !loadingCerts ? (
+          <EmptyState
+            icon={FileText}
+            title="Nenhum atestado encontrado"
+            description={`Nenhum atestado registrado para ${selectedPatient?.nome ?? 'este paciente'}.`}
+          />
         ) : (
           <EmptyState
             icon={FileText}
-            title="Nenhum atestado cadastrado"
-            description="Os atestados serão criados ao registrar afastamentos para os pacientes."
-            actionLabel="Novo atestado"
-            onAction={() => {}}
+            title="Selecione um paciente"
+            description="Escolha um paciente acima para visualizar seus atestados."
           />
         )}
       </div>

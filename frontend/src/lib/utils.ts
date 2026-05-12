@@ -79,6 +79,16 @@ export function getApiErrorMessage(error: unknown): string {
   return 'Não foi possível concluir a operação.';
 }
 
+export function extractApiError(err: any, fallback: string): string {
+  const data = err?.response?.data;
+  if (!data) return fallback;
+  if (Array.isArray(data)) {
+    return data.map((e: any) => e.mensagem ?? e.message ?? String(e)).join(' | ');
+  }
+  if (typeof data === 'string') return data;
+  return data.mensagem ?? data.message ?? fallback;
+}
+
 // Validation utilities
 export const validators = {
   cpf: (cpf: string): boolean => {

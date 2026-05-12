@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
 import { SearchInput } from '@/components/SearchInput';
-import { Badge } from '@/components/Badge';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,43 +29,244 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { formatters, searchInArray, statusLabels } from '@/lib/utils';
-import { mockDoctors, mockSpecialties, Doctor } from '@/lib/mockData';
-import { Users, Edit, Trash2, Eye } from 'lucide-react';
+import { Users, Edit, Trash2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { medicosApi } from '@/api/medicos';
+import { especialidadesApi } from '@/api/especialidades';
+import { disponibilidadeApi } from '@/api/disponibilidade';
+import { useAuth } from '@/hooks/useAuth';
+import { canWrite } from '@/lib/rbac';
+import { extractApiError } from '@/lib/utils';
+import type {
+  MedicoListagem,
+  MedicoDetalhamento,
+  MedicoCadastro,
+  MedicoAtualizacao,
+  EspecialidadeListagem,
+  EnderecoPayload,
+  DisponibilidadeListagem,
+  DiaSemana,
+} from '@/types/api';
+
+type FormEndereco = Partial<EnderecoPayload>;
+
+const diasSemanaLabels: Record<DiaSemana, string> = {
+  MONDAY: 'Segunda-feira',
+  TUESDAY: 'Terça-feira',
+  WEDNESDAY: 'Quarta-feira',
+  THURSDAY: 'Quinta-feira',
+  FRIDAY: 'Sexta-feira',
+  SATURDAY: 'Sábado',
+  SUNDAY: 'Domingo',
+};
+
+const diasSemanaOrder: DiaSemana[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+interface FormState {
+  nome: string
+  email: string
+  telefone: string
+  crm: string
+  especialidadeId: string
+  endereco: FormEndereco
+}
+
+const emptyForm = (): FormState => ({
+  nome: '',
+  email: '',
+  telefone: '',
+  crm: '',
+  especialidadeId: '',
+  endereco: {},
+})
 
 export default function Doctors() {
+  const { user } = useAuth();
+  const allowWrite = canWrite(user?.role);
+
+  const [doctors, setDoctors] = useState<MedicoListagem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
+
+  const [especialidades, setEspecialidades] = useState<EspecialidadeListagem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
-  const [formData, setFormData] = useState<Partial<Doctor>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<FormState>(emptyForm());
+  const [saving, setSaving] = useState(false);
 
-  const filteredDoctors = searchInArray(
-    mockDoctors,
-    search,
-    ['name', 'crm', 'specialty', 'email', 'phone']
-  );
+  // Horários modal
+  const [isHorariosOpen, setIsHorariosOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<MedicoListagem | null>(null);
+  const [disponibilidades, setDisponibilidades] = useState<DisponibilidadeListagem[]>([]);
+  const [horariosLoading, setHorariosLoading] = useState(false);
+  const [horarioForm, setHorarioForm] = useState({ diaSemana: '' as DiaSemana | '', horaInicio: '', horaFim: '' });
+  const [savingHorario, setSavingHorario] = useState(false);
 
-  const handleOpenModal = (doctor?: Doctor) => {
+  const fetchDoctors = async (p = page) => {
+    setLoading(true);
+    try {
+      const result = await medicosApi.list(p);
+      setDoctors(result.content);
+      setTotalPages(result.totalPages);
+    } catch {
+      toast.error('Erro ao carregar médicos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDoctors(page);
+  }, [page]);
+
+  useEffect(() => {
+    if (allowWrite || user?.role !== 'ROLE_ADMIN') {
+      especialidadesApi.listAll().then(setEspecialidades).catch(() => {});
+    }
+  }, []);
+
+  const filteredDoctors = search.trim()
+    ? doctors.filter(d =>
+        [d.nome, d.crm, d.especialidade, d.email]
+          .some(v => v?.toLowerCase().includes(search.toLowerCase()))
+      )
+    : doctors;
+
+  const handleOpenModal = async (doctor?: MedicoListagem) => {
     if (doctor) {
-      setEditingDoctor(doctor);
-      setFormData(doctor);
+      try {
+        const detail: MedicoDetalhamento = await medicosApi.get(doctor.id);
+        setEditingId(doctor.id);
+        setFormData({
+          nome: detail.nome,
+          email: detail.email,
+          telefone: detail.telefone,
+          crm: detail.crm,
+          especialidadeId: String(
+            especialidades.find(e => e.nome === detail.especialidade)?.id ?? ''
+          ),
+          endereco: { ...detail.endereco },
+        });
+      } catch {
+        toast.error('Erro ao carregar dados do médico');
+        return;
+      }
     } else {
-      setEditingDoctor(null);
-      setFormData({});
+      setEditingId(null);
+      setFormData(emptyForm());
     }
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingDoctor(null);
-    setFormData({});
+    setEditingId(null);
+    setFormData(emptyForm());
   };
 
-  const handleSave = () => {
-    // Mock save - in real app would call API
-    handleCloseModal();
+  const setEndereco = (field: keyof EnderecoPayload, value: string) => {
+    setFormData(prev => ({ ...prev, endereco: { ...prev.endereco, [field]: value } }));
+  };
+
+  const handleSave = async () => {
+    if (!formData.nome || !formData.email || !formData.crm || !formData.especialidadeId) {
+      toast.error('Preencha os campos obrigatórios');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingId) {
+        const payload: MedicoAtualizacao = {
+          id: editingId,
+          nome: formData.nome,
+          telefone: formData.telefone,
+          endereco: formData.endereco as EnderecoPayload,
+        };
+        await medicosApi.update(payload);
+        toast.success('Médico atualizado com sucesso');
+      } else {
+        const payload: MedicoCadastro = {
+          nome: formData.nome,
+          email: formData.email,
+          telefone: formData.telefone,
+          crm: formData.crm,
+          especialidadeId: Number(formData.especialidadeId),
+          endereco: formData.endereco as EnderecoPayload,
+        };
+        await medicosApi.create(payload);
+        toast.success('Médico cadastrado com sucesso');
+      }
+      handleCloseModal();
+      setPage(0);
+      fetchDoctors(0);
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao salvar médico'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleOpenHorarios = async (doctor: MedicoListagem) => {
+    setSelectedDoctor(doctor);
+    setHorarioForm({ diaSemana: '', horaInicio: '', horaFim: '' });
+    setIsHorariosOpen(true);
+    setHorariosLoading(true);
+    try {
+      const list = await disponibilidadeApi.list(doctor.id);
+      setDisponibilidades(list);
+    } catch {
+      toast.error('Erro ao carregar horários');
+    } finally {
+      setHorariosLoading(false);
+    }
+  };
+
+  const handleAddHorario = async () => {
+    if (!horarioForm.diaSemana || !horarioForm.horaInicio || !horarioForm.horaFim) {
+      toast.error('Preencha dia, hora início e hora fim');
+      return;
+    }
+    if (horarioForm.horaFim <= horarioForm.horaInicio) {
+      toast.error('Hora fim deve ser maior que hora início');
+      return;
+    }
+    setSavingHorario(true);
+    try {
+      const nova = await disponibilidadeApi.create(selectedDoctor!.id, {
+        diaSemana: horarioForm.diaSemana,
+        horaInicio: horarioForm.horaInicio,
+        horaFim: horarioForm.horaFim,
+      });
+      setDisponibilidades(prev => [...prev, nova]);
+      setHorarioForm({ diaSemana: '', horaInicio: '', horaFim: '' });
+      toast.success('Horário adicionado');
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao adicionar horário'));
+    } finally {
+      setSavingHorario(false);
+    }
+  };
+
+  const handleRemoveHorario = async (disponibilidadeId: number) => {
+    try {
+      await disponibilidadeApi.remove(selectedDoctor!.id, disponibilidadeId);
+      setDisponibilidades(prev => prev.filter(d => d.id !== disponibilidadeId));
+      toast.success('Horário removido');
+    } catch {
+      toast.error('Erro ao remover horário');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await medicosApi.remove(id);
+      toast.success('Médico inativado com sucesso');
+      fetchDoctors(page);
+    } catch {
+      toast.error('Erro ao inativar médico');
+    }
   };
 
   return (
@@ -77,20 +277,24 @@ export default function Doctors() {
           title="Médicos"
           description="Gerencie os médicos cadastrados na clínica"
           actionLabel="Novo médico"
-          onAction={() => handleOpenModal()}
+          onAction={allowWrite ? () => handleOpenModal() : undefined}
         />
 
         <Card className="border-border">
           <div className="p-6">
             <SearchInput
-              placeholder="Buscar por nome, CRM ou especialidade..."
+              placeholder="Buscar por nome, CRM, especialidade ou e-mail..."
               value={search}
               onChange={setSearch}
             />
           </div>
         </Card>
 
-        {filteredDoctors.length > 0 ? (
+        {loading ? (
+          <Card className="border-border p-12 text-center text-muted-foreground">
+            Carregando...
+          </Card>
+        ) : filteredDoctors.length > 0 ? (
           <Card className="border-border overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -99,41 +303,32 @@ export default function Doctors() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Especialidade</TableHead>
                     <TableHead>CRM</TableHead>
-                    <TableHead>Telefone</TableHead>
                     <TableHead>E-mail</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ações</TableHead>
+                    {allowWrite && <TableHead>Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredDoctors.map((doctor) => (
                     <TableRow key={doctor.id}>
-                      <TableCell className="font-medium">{doctor.name}</TableCell>
-                      <TableCell>{doctor.specialty}</TableCell>
+                      <TableCell className="font-medium">{doctor.nome}</TableCell>
+                      <TableCell>{doctor.especialidade}</TableCell>
                       <TableCell>{doctor.crm}</TableCell>
-                      <TableCell>{formatters.phone(doctor.phone)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {doctor.email}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={doctor.status === 'active' ? 'success' : 'warning'}
-                        >
-                          {statusLabels[doctor.status]}
-                        </Badge>
-                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{doctor.email}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenModal(doctor)}
-                          >
-                            <Edit className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" title="Gerenciar horários" onClick={() => handleOpenHorarios(doctor)}>
+                            <Clock className="h-4 w-4 text-primary" />
                           </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                          {allowWrite && (
+                            <>
+                              <Button variant="ghost" size="sm" onClick={() => handleOpenModal(doctor)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(doctor.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -141,97 +336,108 @@ export default function Doctors() {
                 </TableBody>
               </Table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t px-6 py-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 0}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Página {page + 1} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </Card>
         ) : (
           <EmptyState
             icon={Users}
-            title="Nenhum médico cadastrado"
-            description="Cadastre o primeiro médico para começar a gerenciar os atendimentos."
-            actionLabel="Novo médico"
-            onAction={() => handleOpenModal()}
+            title="Nenhum médico encontrado"
+            description={search ? 'Nenhum resultado para a busca.' : 'Cadastre o primeiro médico para começar.'}
+            actionLabel={allowWrite ? 'Novo médico' : undefined}
+            onAction={allowWrite ? () => handleOpenModal() : undefined}
           />
         )}
       </div>
 
-      {/* Form Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {editingDoctor ? 'Editar Médico' : 'Novo Médico'}
-            </DialogTitle>
-            <DialogDescription>
-              Preencha os dados do médico abaixo
-            </DialogDescription>
+            <DialogTitle>{editingId ? 'Editar Médico' : 'Novo Médico'}</DialogTitle>
+            <DialogDescription>Preencha os dados do médico abaixo</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Professional Data */}
+          <div className="space-y-8">
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-foreground">
-                Dados Profissionais
-              </h3>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <h3 className="text-sm font-semibold mb-5 text-foreground">Dados Profissionais</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="name">Nome</Label>
+                  <Label className="mb-1.5 block" htmlFor="nome">Nome *</Label>
                   <Input
-                    id="name"
-                    value={formData.name || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
+                    id="nome"
+                    value={formData.nome}
+                    onChange={e => setFormData(p => ({ ...p, nome: e.target.value }))}
                     placeholder="Nome completo"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">E-mail</Label>
+                  <Label className="mb-1.5 block" htmlFor="email">E-mail *</Label>
                   <Input
                     id="email"
                     type="email"
-                    value={formData.email || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
+                    value={formData.email}
+                    disabled={!!editingId}
+                    onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
                     placeholder="email@example.com"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Telefone</Label>
+                  <Label className="mb-1.5 block" htmlFor="telefone">Telefone *</Label>
                   <Input
-                    id="phone"
-                    value={formData.phone || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
+                    id="telefone"
+                    value={formData.telefone}
+                    onChange={e => setFormData(p => ({ ...p, telefone: e.target.value }))}
                     placeholder="(62) 99999-0000"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="crm">CRM</Label>
+                  <Label className="mb-1.5 block" htmlFor="crm">CRM * (4–6 dígitos)</Label>
                   <Input
                     id="crm"
-                    value={formData.crm || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, crm: e.target.value })
-                    }
-                    placeholder="12345/GO"
+                    value={formData.crm}
+                    disabled={!!editingId}
+                    onChange={e => setFormData(p => ({ ...p, crm: e.target.value }))}
+                    placeholder="123456"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="specialty">Especialidade</Label>
+                  <Label className="mb-1.5 block" htmlFor="especialidade">Especialidade *</Label>
                   <Select
-                    value={formData.specialty || ''}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, specialty: value })
-                    }
+                    value={formData.especialidadeId}
+                    onValueChange={v => setFormData(p => ({ ...p, especialidadeId: v }))}
+                    disabled={!!editingId}
                   >
-                    <SelectTrigger id="specialty">
+                    <SelectTrigger id="especialidade">
                       <SelectValue placeholder="Selecione uma especialidade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockSpecialties.map((spec) => (
-                        <SelectItem key={spec.id} value={spec.name}>
-                          {spec.name}
+                      {especialidades.map(spec => (
+                        <SelectItem key={spec.id} value={String(spec.id)}>
+                          {spec.nome}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -240,133 +446,189 @@ export default function Doctors() {
               </div>
             </div>
 
-            {/* Address */}
             <div>
-              <h3 className="text-sm font-semibold mb-4 text-foreground">
-                Endereço
-              </h3>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <h3 className="text-sm font-semibold mb-5 text-foreground">Endereço</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="zipCode">CEP</Label>
+                  <Label className="mb-1.5 block" htmlFor="cep">CEP * (8 dígitos)</Label>
                   <Input
-                    id="zipCode"
-                    value={formData.address?.zipCode || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          zipCode: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="74000-000"
+                    id="cep"
+                    value={formData.endereco.cep ?? ''}
+                    onChange={e => setEndereco('cep', e.target.value)}
+                    placeholder="74000000"
+                    maxLength={8}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="state">UF</Label>
+                  <Label className="mb-1.5 block" htmlFor="uf">UF *</Label>
                   <Input
-                    id="state"
-                    value={formData.address?.state || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          state: e.target.value,
-                        },
-                      })
-                    }
+                    id="uf"
+                    value={formData.endereco.uf ?? ''}
+                    onChange={e => setEndereco('uf', e.target.value.toUpperCase())}
                     placeholder="GO"
                     maxLength={2}
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="city">Cidade</Label>
+                  <Label className="mb-1.5 block" htmlFor="cidade">Cidade *</Label>
                   <Input
-                    id="city"
-                    value={formData.address?.city || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          city: e.target.value,
-                        },
-                      })
-                    }
+                    id="cidade"
+                    value={formData.endereco.cidade ?? ''}
+                    onChange={e => setEndereco('cidade', e.target.value)}
                     placeholder="Goiânia"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <Label htmlFor="street">Logradouro</Label>
+                  <Label className="mb-1.5 block" htmlFor="logradouro">Logradouro *</Label>
                   <Input
-                    id="street"
-                    value={formData.address?.street || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          street: e.target.value,
-                        },
-                      })
-                    }
+                    id="logradouro"
+                    value={formData.endereco.logradouro ?? ''}
+                    onChange={e => setEndereco('logradouro', e.target.value)}
                     placeholder="Avenida Goiás"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="number">Número</Label>
+                  <Label className="mb-1.5 block" htmlFor="bairro">Bairro *</Label>
                   <Input
-                    id="number"
-                    value={formData.address?.number || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          number: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="1000"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="neighborhood">Bairro</Label>
-                  <Input
-                    id="neighborhood"
-                    value={formData.address?.neighborhood || ''}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        address: {
-                          ...formData.address,
-                          neighborhood: e.target.value,
-                        },
-                      })
-                    }
+                    id="bairro"
+                    value={formData.endereco.bairro ?? ''}
+                    onChange={e => setEndereco('bairro', e.target.value)}
                     placeholder="Centro"
                   />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="complement">Complemento</Label>
+                <div>
+                  <Label className="mb-1.5 block" htmlFor="numero">Número</Label>
                   <Input
-                    id="complement"
+                    id="numero"
+                    value={formData.endereco.numero ?? ''}
+                    onChange={e => setEndereco('numero', e.target.value)}
+                    placeholder="1000"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="mb-1.5 block" htmlFor="complemento">Complemento</Label>
+                  <Input
+                    id="complemento"
+                    value={formData.endereco.complemento ?? ''}
+                    onChange={e => setEndereco('complemento', e.target.value)}
                     placeholder="Sala 501"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={handleCloseModal}>
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={handleCloseModal} disabled={saving}>
                 Cancelar
               </Button>
-              <Button onClick={handleSave}>
-                {editingDoctor ? 'Atualizar' : 'Cadastrar'}
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Cadastrar'}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Horários Modal */}
+      <Dialog open={isHorariosOpen} onOpenChange={setIsHorariosOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Horários de Disponibilidade — {selectedDoctor?.nome}</DialogTitle>
+            <DialogDescription>Gerencie os dias e horários em que o médico atende</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Form para adicionar */}
+            {allowWrite && (
+              <div>
+                <h3 className="text-sm font-semibold mb-4 text-foreground">Adicionar Horário</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <Label className="mb-1.5 block" htmlFor="diaSemana">Dia da Semana *</Label>
+                    <Select
+                      value={horarioForm.diaSemana}
+                      onValueChange={v => setHorarioForm(p => ({ ...p, diaSemana: v as DiaSemana }))}
+                    >
+                      <SelectTrigger id="diaSemana">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {diasSemanaOrder.map(d => (
+                          <SelectItem key={d} value={d}>{diasSemanaLabels[d]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block" htmlFor="horaInicio">Hora Início *</Label>
+                    <Input
+                      id="horaInicio"
+                      type="time"
+                      value={horarioForm.horaInicio}
+                      onChange={e => setHorarioForm(p => ({ ...p, horaInicio: e.target.value }))}
+                      min="07:00"
+                      max="19:00"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block" htmlFor="horaFim">Hora Fim *</Label>
+                    <Input
+                      id="horaFim"
+                      type="time"
+                      value={horarioForm.horaFim}
+                      onChange={e => setHorarioForm(p => ({ ...p, horaFim: e.target.value }))}
+                      min="07:00"
+                      max="19:00"
+                    />
+                  </div>
+                </div>
+                <Button className="mt-4" onClick={handleAddHorario} disabled={savingHorario}>
+                  {savingHorario ? 'Adicionando...' : 'Adicionar Horário'}
+                </Button>
+              </div>
+            )}
+
+            {/* Lista de horários existentes */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3 text-foreground">Horários Cadastrados</h3>
+              {horariosLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : disponibilidades.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum horário cadastrado.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Dia</TableHead>
+                      <TableHead>Início</TableHead>
+                      <TableHead>Fim</TableHead>
+                      {allowWrite && <TableHead></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {disponibilidades
+                      .slice()
+                      .sort((a, b) => diasSemanaOrder.indexOf(a.diaSemana) - diasSemanaOrder.indexOf(b.diaSemana))
+                      .map(d => (
+                        <TableRow key={d.id}>
+                          <TableCell className="font-medium">{diasSemanaLabels[d.diaSemana]}</TableCell>
+                          <TableCell>{d.horaInicio.slice(0, 5)}</TableCell>
+                          <TableCell>{d.horaFim.slice(0, 5)}</TableCell>
+                          {allowWrite && (
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => handleRemoveHorario(d.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t">
+              <Button variant="outline" onClick={() => setIsHorariosOpen(false)}>Fechar</Button>
             </div>
           </div>
         </DialogContent>

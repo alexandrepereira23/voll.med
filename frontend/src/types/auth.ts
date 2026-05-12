@@ -25,6 +25,7 @@ export interface CadastroUsuarioPayload {
   login: string
   senha: string
   role: CadastroUsuarioRole
+  medicoId?: number
 }
 
 export interface UsuarioDetalhamento {

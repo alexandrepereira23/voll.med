@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
 import { SearchInput } from '@/components/SearchInput';
-import { Badge } from '@/components/Badge';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,48 +22,117 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { searchInArray, statusLabels } from '@/lib/utils';
-import { mockInsurance, Insurance } from '@/lib/mockData';
-import { Settings, Edit, Trash2 } from 'lucide-react';
+import { Settings, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { conveniosApi } from '@/api/convenios';
+import { useAuth } from '@/hooks/useAuth';
+import { canWrite } from '@/lib/rbac';
+import { extractApiError } from '@/lib/utils';
+import type { ConvenioListagem, ConvenioCadastro, ConvenioAtualizacao } from '@/types/api';
+
+interface FormState {
+  nome: string
+  codigoAns: string
+}
+
+const emptyForm = (): FormState => ({ nome: '', codigoAns: '' });
 
 export default function InsurancePage() {
+  const { user } = useAuth();
+  const allowWrite = canWrite(user?.role);
+
+  const [convenios, setConvenios] = useState<ConvenioListagem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingInsurance, setEditingInsurance] = useState<Insurance | null>(null);
-  const [formData, setFormData] = useState<Partial<Insurance>>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<FormState>(emptyForm());
+  const [saving, setSaving] = useState(false);
 
-  const filteredInsurance = searchInArray(
-    mockInsurance,
-    search,
-    ['name', 'ansCode', 'type']
-  );
+  const fetchConvenios = async (p = page) => {
+    setLoading(true);
+    try {
+      const result = await conveniosApi.list(p);
+      setConvenios(result.content);
+      setTotalPages(result.totalPages);
+    } catch {
+      toast.error('Erro ao carregar convênios');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleOpenModal = (insurance?: Insurance) => {
-    if (insurance) {
-      setEditingInsurance(insurance);
-      setFormData(insurance);
+  useEffect(() => {
+    fetchConvenios(page);
+  }, [page]);
+
+  const filtered = search.trim()
+    ? convenios.filter(c =>
+        [c.nome, c.codigoAns]
+          .some(v => v?.toLowerCase().includes(search.toLowerCase()))
+      )
+    : convenios;
+
+  const handleOpenModal = (conv?: ConvenioListagem) => {
+    if (conv) {
+      setEditingId(conv.id);
+      setFormData({ nome: conv.nome, codigoAns: conv.codigoAns ?? '' });
     } else {
-      setEditingInsurance(null);
-      setFormData({});
+      setEditingId(null);
+      setFormData(emptyForm());
     }
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setEditingInsurance(null);
-    setFormData({});
+    setEditingId(null);
+    setFormData(emptyForm());
   };
 
-  const handleSave = () => {
-    handleCloseModal();
+  const handleSave = async () => {
+    if (!formData.nome.trim()) {
+      toast.error('Informe o nome do convênio');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingId) {
+        const payload: ConvenioAtualizacao = {
+          nome: formData.nome,
+          ...(formData.codigoAns && { codigoAns: formData.codigoAns }),
+        };
+        await conveniosApi.update(editingId, payload);
+        toast.success('Convênio atualizado');
+      } else {
+        const payload: ConvenioCadastro = {
+          nome: formData.nome,
+          ...(formData.codigoAns && { codigoAns: formData.codigoAns }),
+        };
+        await conveniosApi.create(payload);
+        toast.success('Convênio cadastrado');
+      }
+      handleCloseModal();
+      setPage(0);
+      fetchConvenios(0);
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao salvar convênio'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await conveniosApi.remove(id);
+      toast.success('Convênio inativado');
+      fetchConvenios(page);
+    } catch {
+      toast.error('Erro ao inativar convênio');
+    }
   };
 
   return (
@@ -75,20 +143,24 @@ export default function InsurancePage() {
           title="Convênios"
           description="Gerencie convênios e planos aceitos pela clínica"
           actionLabel="Novo convênio"
-          onAction={() => handleOpenModal()}
+          onAction={allowWrite ? () => handleOpenModal() : undefined}
         />
 
         <Card className="border-border">
           <div className="p-6">
             <SearchInput
-              placeholder="Buscar por nome, código ANS ou tipo..."
+              placeholder="Buscar por nome ou código ANS..."
               value={search}
               onChange={setSearch}
             />
           </div>
         </Card>
 
-        {filteredInsurance.length > 0 ? (
+        {loading ? (
+          <Card className="border-border p-12 text-center text-muted-foreground">
+            Carregando...
+          </Card>
+        ) : filtered.length > 0 ? (
           <Card className="border-border overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -96,117 +168,87 @@ export default function InsurancePage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Código ANS</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Ações</TableHead>
+                    {allowWrite && <TableHead>Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredInsurance.map((insurance) => (
-                    <TableRow key={insurance.id}>
-                      <TableCell className="font-medium">{insurance.name}</TableCell>
+                  {filtered.map(conv => (
+                    <TableRow key={conv.id}>
+                      <TableCell className="font-medium">{conv.nome}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {insurance.ansCode}
+                        {conv.codigoAns ?? '—'}
                       </TableCell>
-                      <TableCell>{insurance.type}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={insurance.status === 'active' ? 'success' : 'warning'}
-                        >
-                          {statusLabels[insurance.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenModal(insurance)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {allowWrite && (
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleOpenModal(conv)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(conv.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t px-6 py-3">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  <ChevronLeft className="h-4 w-4 mr-1" />Anterior
+                </Button>
+                <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  Próxima<ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </Card>
         ) : (
           <EmptyState
             icon={Settings}
-            title="Nenhum convênio cadastrado"
-            description="Cadastre o primeiro convênio para começar."
-            actionLabel="Novo convênio"
-            onAction={() => handleOpenModal()}
+            title="Nenhum convênio encontrado"
+            description={search ? 'Nenhum resultado para a busca.' : 'Cadastre o primeiro convênio para começar.'}
+            actionLabel={allowWrite ? 'Novo convênio' : undefined}
+            onAction={allowWrite ? () => handleOpenModal() : undefined}
           />
         )}
       </div>
 
-      {/* Form Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {editingInsurance ? 'Editar Convênio' : 'Novo Convênio'}
-            </DialogTitle>
-            <DialogDescription>
-              Preencha os dados do convênio abaixo
-            </DialogDescription>
+            <DialogTitle>{editingId ? 'Editar Convênio' : 'Novo Convênio'}</DialogTitle>
+            <DialogDescription>Preencha os dados do convênio abaixo</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <Label htmlFor="name">Nome</Label>
+              <Label className="mb-1.5 block" htmlFor="nome">Nome *</Label>
               <Input
-                id="name"
-                value={formData.name || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                id="nome"
+                value={formData.nome}
+                onChange={e => setFormData(p => ({ ...p, nome: e.target.value }))}
                 placeholder="Ex: Unimed"
               />
             </div>
             <div>
-              <Label htmlFor="ansCode">Código ANS</Label>
+              <Label className="mb-1.5 block" htmlFor="codigoAns">Código ANS</Label>
               <Input
-                id="ansCode"
-                value={formData.ansCode || ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, ansCode: e.target.value })
-                }
+                id="codigoAns"
+                value={formData.codigoAns}
+                onChange={e => setFormData(p => ({ ...p, codigoAns: e.target.value }))}
                 placeholder="Ex: 34028-1"
               />
             </div>
-            <div>
-              <Label htmlFor="type">Tipo</Label>
-              <Select
-                value={formData.type || ''}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, type: value })
-                }
-              >
-                <SelectTrigger id="type">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Operadora">Operadora</SelectItem>
-                  <SelectItem value="Particular">Particular</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={handleCloseModal}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSave}>
-                {editingInsurance ? 'Atualizar' : 'Cadastrar'}
+            <div className="flex justify-end gap-3 pt-2 border-t">
+              <Button variant="outline" onClick={handleCloseModal} disabled={saving}>Cancelar</Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Cadastrar'}
               </Button>
             </div>
           </div>

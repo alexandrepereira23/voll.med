@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   BarChart3,
   BookOpen,
@@ -11,6 +10,7 @@ import {
   Pill,
   Stethoscope,
   Users,
+  UserCog,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -24,8 +24,9 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const navItems: NavItem[] = [
+const allNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: <BarChart3 className="h-5 w-5" /> },
+  { label: 'Usuários', href: '/users', icon: <UserCog className="h-5 w-5" /> },
   { label: 'Médicos', href: '/doctors', icon: <Stethoscope className="h-5 w-5" /> },
   { label: 'Pacientes', href: '/patients', icon: <Users className="h-5 w-5" /> },
   { label: 'Consultas', href: '/appointments', icon: <ClipboardList className="h-5 w-5" /> },
@@ -49,6 +50,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     ? user.login.slice(0, 2).toUpperCase()
     : 'VM';
 
+  const navItems = allNavItems.filter(item => {
+    if (user?.role === 'ROLE_ADMIN') return item.href === '/users';
+    if (user?.role === 'ROLE_MEDICO') return !['/users', '/specialties', '/insurance'].includes(item.href);
+    return item.href !== '/users';
+  });
+
   return (
     <div className="flex h-screen bg-background">
       {/* Mobile overlay */}
@@ -68,7 +75,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-sidebar-border p-6">
+          <div className="h-16 flex items-center justify-between border-b border-sidebar-border px-6 shrink-0">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary">
                 <Stethoscope className="h-4 w-4 text-sidebar-primary-foreground" />
@@ -108,7 +115,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Footer */}
           <div className="border-t border-sidebar-border p-4">
-            <Separator className="mb-4" />
             <div className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-primary/20">
                 <span className="text-xs font-bold text-sidebar-primary">{initials}</span>
@@ -138,7 +144,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
+        <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-muted-foreground hover:text-foreground"
