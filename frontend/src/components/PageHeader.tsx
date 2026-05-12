@@ -1,19 +1,41 @@
-import type { ReactNode } from 'react'
+import { Button } from '@/components/ui/button';
+import { LucideIcon } from 'lucide-react';
 
 interface PageHeaderProps {
-  icon: ReactNode
-  title: string
-  actions?: ReactNode
+  icon?: LucideIcon;
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }
 
-export function PageHeader({ icon, title, actions }: PageHeaderProps) {
+export function PageHeader({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: PageHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-      <div className="flex items-center gap-3">
-        <span className="text-text-secondary">{icon}</span>
-        <h1 className="text-2xl font-bold text-text-primary">{title}</h1>
+    <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+      <div className="flex items-start gap-3">
+        {Icon && (
+          <div className="mt-1 rounded-lg bg-primary/10 p-2">
+            <Icon className="h-6 w-6 text-primary" />
+          </div>
+        )}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">{title}</h1>
+          {description && (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
       </div>
-      {actions}
+      {actionLabel && onAction && (
+        <Button onClick={onAction} className="whitespace-nowrap">
+          + {actionLabel}
+        </Button>
+      )}
     </div>
-  )
+  );
 }

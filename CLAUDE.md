@@ -103,11 +103,13 @@ Monorepo — frontend em `frontend/` no mesmo repositório.
 
 ### Stack
 
-- React 18 + TypeScript + Vite
-- Tailwind CSS 3
-- React Router DOM 6
-- Axios (client HTTP)
-- React Hook Form + Zod (formulários e validação)
+- React 19 + TypeScript + Vite 7
+- TailwindCSS v4 (via `@tailwindcss/vite`, sem `tailwind.config.ts`)
+- **shadcn/ui** — 60+ componentes sobre Radix UI (`components/ui/`)
+- **wouter** — router leve (substitui react-router-dom)
+- Axios (client HTTP com interceptor JWT)
+- React Hook Form + Zod v4 (formulários e validação)
+- framer-motion (animações), recharts (gráficos), sonner (toasts)
 - Lucide React (ícones)
 
 ### Comandos
@@ -123,30 +125,74 @@ npm run dev
 
 # Build de produção
 npm run build
+
+# Type check
+npm run check
 ```
 
-### O que está implementado
+### Autenticação
 
-- Autenticação completa: login, logout, token JWT no `localStorage`, `AuthContext`
-- `PrivateRoute` — redireciona para `/login` se não autenticado
-- Layout com `Sidebar` responsiva
-- Páginas: `Login`, `Dashboard` (placeholder)
-- Axios com interceptor que injeta `Authorization: Bearer <token>` automaticamente
+- `AuthContext` + `useAuth` — token JWT no `localStorage`, decodificação do payload (login, role)
+- `PrivateRoute` (em `App.tsx`) — redireciona para `/login` via `<Redirect>` do wouter se não autenticado
+- `api/axios.ts` — injeta `Authorization: Bearer <token>` em toda requisição; redireciona para `/login` automaticamente no 401
+
+### Paleta de cores
+
+Warm beige definida em `src/index.css` via variáveis CSS (sistema TailwindCSS v4):
+
+| Token | Hex | Uso |
+|-------|-----|-----|
+| `--background` | `#F5F0EB` | Fundo geral |
+| `--card` / `--sidebar` | `#EDE8E3` | Cards e sidebar |
+| `--primary` | `#6B7F6A` | Sage green — botões, links ativos |
+| `--destructive` | `#C4714F` | Burnt orange — erros, cancelamentos |
+| `--foreground` | `#1C1917` | Texto principal |
+| `--muted-foreground` | `#78716C` | Texto secundário |
+
+Fonte: **Plus Jakarta Sans** (Google Fonts, carregada em `index.html`).
 
 ### Estrutura
 
 ```
 frontend/src/
-├── api/          # axios.ts (instância), auth.ts (endpoints)
-├── contexts/     # AuthContext.tsx
-├── hooks/        # useAuth.ts
+├── api/               # axios.ts (instância + interceptors), auth.ts
+├── contexts/          # AuthContext.tsx, ThemeContext.tsx
+├── hooks/             # useAuth.ts, useMobile.tsx
+├── lib/               # utils.ts (cn, formatters, validators), mockData.ts
 ├── components/
-│   ├── ui/       # Button, Input, Spinner
-│   └── layout/   # Layout, Sidebar, NavItem
-├── pages/        # Login.tsx, Dashboard.tsx
-├── routes/       # AppRouter.tsx, PrivateRoute.tsx
-└── types/        # auth.ts (DTOs)
+│   ├── ui/            # shadcn/ui (60+ componentes Radix)
+│   ├── DashboardLayout.tsx  # sidebar responsiva com logout e highlight ativo
+│   ├── PageHeader.tsx
+│   ├── Badge.tsx, EmptyState.tsx, SearchInput.tsx, ErrorBoundary.tsx
+├── pages/
+│   ├── Login.tsx      # tela de login (mantida do frontend anterior)
+│   ├── Dashboard.tsx
+│   ├── Doctors.tsx, Patients.tsx, Appointments.tsx
+│   ├── MedicalRecords.tsx, Prescriptions.tsx, Certificates.tsx
+│   ├── Specialties.tsx, Insurance.tsx
+│   └── NotFound.tsx
+├── types/             # auth.ts (Role, User, JwtPayload, DTOs)
+└── App.tsx            # router wouter + AuthProvider + ThemeProvider
 ```
+
+### Rotas
+
+| Path | Página | Auth |
+|------|--------|------|
+| `/login` | Login | pública |
+| `/` | Dashboard | privada |
+| `/doctors` | Médicos | privada |
+| `/patients` | Pacientes | privada |
+| `/appointments` | Consultas | privada |
+| `/medical-records` | Prontuários | privada |
+| `/prescriptions` | Prescrições | privada |
+| `/certificates` | Atestados | privada |
+| `/specialties` | Especialidades | privada |
+| `/insurance` | Convênios | privada |
+
+### Estado atual das páginas
+
+Todas as páginas estão implementadas com UI completa usando `lib/mockData.ts`. O próximo passo é substituir o mockData pelas chamadas reais à API (os módulos em `api/` ainda precisam ser criados para cada domínio).
 
 ### CORS
 
@@ -154,4 +200,4 @@ Backend libera `http://localhost:5173` em dev. Para produção, atualizar `Secur
 
 ## Planejamento de evolução
 
-Backend completo (V1–V22). Frontend em andamento — próximas páginas: Médicos, Pacientes, Consultas.
+Backend completo (V1–V22). Frontend com todas as páginas implementadas — próximo passo: conectar cada página à API real substituindo `mockData.ts` pelos módulos de API (`api/medicos.ts`, `api/pacientes.ts`, etc.).
