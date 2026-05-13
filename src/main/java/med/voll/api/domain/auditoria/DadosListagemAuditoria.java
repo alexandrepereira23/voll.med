@@ -5,12 +5,12 @@ import java.time.LocalDateTime;
 public record DadosListagemAuditoria(
         Long id,
         Long prontuarioId,
-        Long usuarioId,
+        String loginUsuario,
         AcaoAuditoria acao,
         LocalDateTime dataHora,
         String ipOrigem
 ) {
-    public DadosListagemAuditoria(AuditoriaProntuario a) {
-        this(a.getId(), a.getProntuarioId(), a.getUsuarioId(), a.getAcao(), a.getDataHora(), a.getIpOrigem());
+    public DadosListagemAuditoria(AuditoriaProntuario a, String loginUsuario) {
+        this(a.getId(), a.getProntuarioId(), loginUsuario, a.getAcao(), a.getDataHora(), a.getIpOrigem());
     }
 }

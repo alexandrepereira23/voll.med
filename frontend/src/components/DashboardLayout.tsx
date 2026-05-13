@@ -3,11 +3,13 @@ import {
   BarChart3,
   BookOpen,
   Building2,
+  Calendar,
   ClipboardList,
   FileText,
   LogOut,
   Menu,
   Pill,
+  ShieldCheck,
   Stethoscope,
   Users,
   UserCog,
@@ -28,6 +30,7 @@ const allNavItems: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: <BarChart3 className="h-5 w-5" /> },
   { label: 'Usuários', href: '/users', icon: <UserCog className="h-5 w-5" /> },
   { label: 'Médicos', href: '/doctors', icon: <Stethoscope className="h-5 w-5" /> },
+  { label: 'Disponibilidade', href: '/availability', icon: <Calendar className="h-5 w-5" /> },
   { label: 'Pacientes', href: '/patients', icon: <Users className="h-5 w-5" /> },
   { label: 'Consultas', href: '/appointments', icon: <ClipboardList className="h-5 w-5" /> },
   { label: 'Prontuários', href: '/medical-records', icon: <BookOpen className="h-5 w-5" /> },
@@ -35,6 +38,7 @@ const allNavItems: NavItem[] = [
   { label: 'Atestados', href: '/certificates', icon: <FileText className="h-5 w-5" /> },
   { label: 'Especialidades', href: '/specialties', icon: <Building2 className="h-5 w-5" /> },
   { label: 'Convênios', href: '/insurance', icon: <ClipboardList className="h-5 w-5" /> },
+  { label: 'Auditoria LGPD', href: '/audit', icon: <ShieldCheck className="h-5 w-5" /> },
 ];
 
 interface DashboardLayoutProps {
@@ -52,8 +56,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navItems = allNavItems.filter(item => {
     if (user?.role === 'ROLE_ADMIN') return item.href === '/users';
-    if (user?.role === 'ROLE_MEDICO') return !['/users', '/specialties', '/insurance'].includes(item.href);
-    return item.href !== '/users';
+    if (user?.role === 'ROLE_AUDITOR' || user?.role === 'ROLE_GESTOR') return item.href === '/audit';
+    if (user?.role === 'ROLE_MEDICO') return !['/users', '/specialties', '/insurance', '/audit'].includes(item.href);
+    return !['/users', '/audit'].includes(item.href);
   });
 
   return (

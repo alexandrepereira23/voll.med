@@ -87,7 +87,7 @@ Logs para acompanhar:
 
 - `ddl-auto=validate` — Hibernate valida o schema mas não o altera; toda mudança estrutural exige migration Flyway
 - Migrations em `src/main/resources/db/migration/` com prefixo `V{n}__descricao.sql`
-- Última migration aplicada: `V22` — próxima será `V23`
+- Última migration aplicada: `V23` — próxima será `V24`
 - Exclusão lógica via campo `ativo` em médicos, pacientes e consultas
 
 ### Regras de negócio de consultas (AgendaDeConsultas)
@@ -155,10 +155,10 @@ Fonte: **Plus Jakarta Sans** (Google Fonts, carregada em `index.html`).
 
 ```
 frontend/src/
-├── api/               # axios.ts (instância + interceptors), auth.ts
+├── api/               # axios.ts (instância + interceptors), auth.ts, módulos por domínio
 ├── contexts/          # AuthContext.tsx, ThemeContext.tsx
 ├── hooks/             # useAuth.ts, useMobile.tsx
-├── lib/               # utils.ts (cn, formatters, validators), mockData.ts
+├── lib/               # utils.ts (cn, formatters, validators), rbac.ts
 ├── components/
 │   ├── ui/            # shadcn/ui (60+ componentes Radix)
 │   ├── DashboardLayout.tsx  # sidebar responsiva com logout e highlight ativo
@@ -170,8 +170,9 @@ frontend/src/
 │   ├── Doctors.tsx, Patients.tsx, Appointments.tsx
 │   ├── MedicalRecords.tsx, Prescriptions.tsx, Certificates.tsx
 │   ├── Specialties.tsx, Insurance.tsx
+│   ├── Users.tsx
 │   └── NotFound.tsx
-├── types/             # auth.ts (Role, User, JwtPayload, DTOs)
+├── types/             # auth.ts (Role, User, JwtPayload), api.ts (todos os DTOs de domínio)
 └── App.tsx            # router wouter + AuthProvider + ThemeProvider
 ```
 
@@ -192,7 +193,7 @@ frontend/src/
 
 ### Estado atual das páginas
 
-Todas as páginas estão implementadas com UI completa usando `lib/mockData.ts`. O próximo passo é substituir o mockData pelas chamadas reais à API (os módulos em `api/` ainda precisam ser criados para cada domínio).
+Todas as páginas estão conectadas à API real. `mockData.ts` removido. Cada domínio tem seu módulo em `api/` e os DTOs correspondentes em `types/api.ts`. RBAC aplicado nos botões de ação (criar/editar/excluir restritos por role).
 
 ### CORS
 
@@ -200,4 +201,4 @@ Backend libera `http://localhost:5173` em dev. Para produção, atualizar `Secur
 
 ## Planejamento de evolução
 
-Backend completo (V1–V22). Frontend com todas as páginas implementadas — próximo passo: conectar cada página à API real substituindo `mockData.ts` pelos módulos de API (`api/medicos.ts`, `api/pacientes.ts`, etc.).
+Backend completo (V1–V23). Frontend totalmente conectado à API real (V23 do frontend). Próximos passos possíveis: filtro de consultas por médico logado (`ROLE_MEDICO`), agenda de disponibilidade real, dashboard com métricas mais ricas.

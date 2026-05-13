@@ -29,11 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users, Edit, Trash2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Edit, Trash2, Clock, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { medicosApi } from '@/api/medicos';
 import { especialidadesApi } from '@/api/especialidades';
 import { disponibilidadeApi } from '@/api/disponibilidade';
+import { medicoConveniosApi } from '@/api/medicoConvenios';
+import { conveniosApi } from '@/api/convenios';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/rbac';
 import { extractApiError } from '@/lib/utils';
@@ -46,6 +48,8 @@ import type {
   EnderecoPayload,
   DisponibilidadeListagem,
   DiaSemana,
+  MedicoConvenioListagem,
+  ConvenioListagem,
 } from '@/types/api';
 
 type FormEndereco = Partial<EnderecoPayload>;
@@ -95,6 +99,14 @@ export default function Doctors() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
+
+  // Convênios modal
+  const [isConveniosOpen, setIsConveniosOpen] = useState(false);
+  const [conveniosMedico, setConveniosMedico] = useState<MedicoConvenioListagem[]>([]);
+  const [conveniosLoading, setConveniosLoading] = useState(false);
+  const [conveniosList, setConveniosList] = useState<ConvenioListagem[]>([]);
+  const [selectedConvenioId, setSelectedConvenioId] = useState('');
+  const [savingConvenio, setSavingConvenio] = useState(false);
 
   // Horários modal
   const [isHorariosOpen, setIsHorariosOpen] = useState(false);
@@ -208,6 +220,51 @@ export default function Doctors() {
     }
   };
 
+  const handleOpenConvenios = async (doctor: MedicoListagem) => {
+    setSelectedDoctor(doctor);
+    setSelectedConvenioId('');
+    setIsConveniosOpen(true);
+    setConveniosLoading(true);
+    try {
+      const [vinculados, todos] = await Promise.all([
+        medicoConveniosApi.list(doctor.id),
+        conveniosApi.listAll(),
+      ]);
+      setConveniosMedico(vinculados);
+      setConveniosList(todos);
+    } catch {
+      toast.error('Erro ao carregar convênios');
+    } finally {
+      setConveniosLoading(false);
+    }
+  };
+
+  const handleVincularConvenio = async () => {
+    if (!selectedConvenioId || !selectedDoctor) return;
+    setSavingConvenio(true);
+    try {
+      const novo = await medicoConveniosApi.vincular(selectedDoctor.id, { convenioId: Number(selectedConvenioId) });
+      setConveniosMedico(prev => [...prev, novo]);
+      setSelectedConvenioId('');
+      toast.success('Convênio vinculado');
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao vincular convênio'));
+    } finally {
+      setSavingConvenio(false);
+    }
+  };
+
+  const handleDesvincularConvenio = async (convenioId: number) => {
+    if (!selectedDoctor) return;
+    try {
+      await medicoConveniosApi.desvincular(selectedDoctor.id, convenioId);
+      setConveniosMedico(prev => prev.filter(c => c.convenioId !== convenioId));
+      toast.success('Convênio desvinculado');
+    } catch {
+      toast.error('Erro ao desvincular convênio');
+    }
+  };
+
   const handleOpenHorarios = async (doctor: MedicoListagem) => {
     setSelectedDoctor(doctor);
     setHorarioForm({ diaSemana: '', horaInicio: '', horaFim: '' });
@@ -316,6 +373,9 @@ export default function Doctors() {
                       <TableCell className="text-sm text-muted-foreground">{doctor.email}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" title="Gerenciar convênios" onClick={() => handleOpenConvenios(doctor)}>
+                            <CreditCard className="h-4 w-4 text-primary" />
+                          </Button>
                           <Button variant="ghost" size="sm" title="Gerenciar horários" onClick={() => handleOpenHorarios(doctor)}>
                             <Clock className="h-4 w-4 text-primary" />
                           </Button>
@@ -528,6 +588,84 @@ export default function Doctors() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Convênios Modal */}
+      <Dialog open={isConveniosOpen} onOpenChange={setIsConveniosOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Convênios Aceitos — {selectedDoctor?.nome}</DialogTitle>
+            <DialogDescription>Gerencie os planos de saúde aceitos por este médico</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {allowWrite && (
+              <div>
+                <h3 className="text-sm font-semibold mb-4 text-foreground">Vincular Convênio</h3>
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <Label className="mb-1.5 block">Convênio</Label>
+                    <Select value={selectedConvenioId} onValueChange={setSelectedConvenioId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um convênio..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {conveniosList
+                          .filter(c => !conveniosMedico.some(v => v.convenioId === c.id))
+                          .map(c => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleVincularConvenio} disabled={!selectedConvenioId || savingConvenio}>
+                    {savingConvenio ? 'Vinculando...' : 'Vincular'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h3 className="text-sm font-semibold mb-3 text-foreground">Convênios Vinculados</h3>
+              {conveniosLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : conveniosMedico.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum convênio vinculado.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Código ANS</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      {allowWrite && <TableHead></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {conveniosMedico.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.nomeConvenio}</TableCell>
+                        <TableCell>{c.codigoANS ?? '—'}</TableCell>
+                        <TableCell>{c.tipo === 'PARTICULAR' ? 'Particular' : 'Plano'}</TableCell>
+                        {allowWrite && (
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => handleDesvincularConvenio(c.convenioId)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t">
+              <Button variant="outline" onClick={() => setIsConveniosOpen(false)}>Fechar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Horários Modal */}
       <Dialog open={isHorariosOpen} onOpenChange={setIsHorariosOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">

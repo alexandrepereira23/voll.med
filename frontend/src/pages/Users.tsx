@@ -46,11 +46,12 @@ const roleLabels: Record<string, string> = {
 interface FormState {
   login: string
   senha: string
+  confirmarSenha: string
   role: CadastroUsuarioRole | ''
   medicoId: string
 }
 
-const emptyForm = (): FormState => ({ login: '', senha: '', role: '', medicoId: '' });
+const emptyForm = (): FormState => ({ login: '', senha: '', confirmarSenha: '', role: '', medicoId: '' });
 
 export default function Users() {
   const [users, setUsers] = useState<UsuarioDetalhamento[]>([]);
@@ -94,6 +95,10 @@ export default function Users() {
   const handleSave = async () => {
     if (!formData.login || !formData.senha || !formData.role) {
       toast.error('Preencha login, senha e perfil');
+      return;
+    }
+    if (formData.senha !== formData.confirmarSenha) {
+      toast.error('As senhas não coincidem');
       return;
     }
     if (formData.role === 'ROLE_MEDICO' && !formData.medicoId) {
@@ -214,6 +219,16 @@ export default function Users() {
                 type="password"
                 value={formData.senha}
                 onChange={e => setFormData(p => ({ ...p, senha: e.target.value }))}
+                placeholder="••••••••"
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block" htmlFor="confirmarSenha">Confirmar senha *</Label>
+              <Input
+                id="confirmarSenha"
+                type="password"
+                value={formData.confirmarSenha}
+                onChange={e => setFormData(p => ({ ...p, confirmarSenha: e.target.value }))}
                 placeholder="••••••••"
               />
             </div>

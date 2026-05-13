@@ -11,6 +11,8 @@ import Certificates from "@/pages/Certificates";
 import Specialties from "@/pages/Specialties";
 import Insurance from "@/pages/Insurance";
 import Users from "@/pages/Users";
+import Availability from "@/pages/Availability";
+import Audit from "@/pages/Audit";
 import Login from "@/pages/Login";
 import { Route, Switch, Redirect } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -28,6 +30,14 @@ function NonAdminRoute({ component: Component }: { component: React.ComponentTyp
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Redirect to="/login" />;
   if (user?.role === 'ROLE_ADMIN') return <Redirect to="/users" />;
+  if (user?.role === 'ROLE_AUDITOR' || user?.role === 'ROLE_GESTOR') return <Redirect to="/audit" />;
+  return <Component />;
+}
+
+function AuditorRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  if (user?.role !== 'ROLE_AUDITOR' && user?.role !== 'ROLE_GESTOR') return <Redirect to="/" />;
   return <Component />;
 }
 
@@ -45,6 +55,8 @@ function Router() {
       <Route path="/certificates" component={() => <NonAdminRoute component={Certificates} />} />
       <Route path="/specialties" component={() => <NonAdminRoute component={Specialties} />} />
       <Route path="/insurance" component={() => <NonAdminRoute component={Insurance} />} />
+      <Route path="/availability" component={() => <NonAdminRoute component={Availability} />} />
+      <Route path="/audit" component={() => <AuditorRoute component={Audit} />} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

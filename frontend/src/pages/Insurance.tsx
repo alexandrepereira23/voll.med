@@ -22,20 +22,28 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Settings, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { conveniosApi } from '@/api/convenios';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/rbac';
 import { extractApiError } from '@/lib/utils';
-import type { ConvenioListagem, ConvenioCadastro, ConvenioAtualizacao } from '@/types/api';
+import type { ConvenioListagem, ConvenioCadastro, ConvenioAtualizacao, TipoConvenio } from '@/types/api';
 
 interface FormState {
   nome: string
-  codigoAns: string
+  codigoANS: string
+  tipo: TipoConvenio | ''
 }
 
-const emptyForm = (): FormState => ({ nome: '', codigoAns: '' });
+const emptyForm = (): FormState => ({ nome: '', codigoANS: '', tipo: '' });
 
 export default function InsurancePage() {
   const { user } = useAuth();
@@ -71,7 +79,7 @@ export default function InsurancePage() {
 
   const filtered = search.trim()
     ? convenios.filter(c =>
-        [c.nome, c.codigoAns]
+        [c.nome, c.codigoANS]
           .some(v => v?.toLowerCase().includes(search.toLowerCase()))
       )
     : convenios;
@@ -79,7 +87,7 @@ export default function InsurancePage() {
   const handleOpenModal = (conv?: ConvenioListagem) => {
     if (conv) {
       setEditingId(conv.id);
-      setFormData({ nome: conv.nome, codigoAns: conv.codigoAns ?? '' });
+      setFormData({ nome: conv.nome, codigoANS: conv.codigoANS ?? '', tipo: conv.tipo ?? '' });
     } else {
       setEditingId(null);
       setFormData(emptyForm());
@@ -98,19 +106,21 @@ export default function InsurancePage() {
       toast.error('Informe o nome do convênio');
       return;
     }
+    if (!editingId && (!formData.codigoANS.trim() || !formData.tipo)) {
+      toast.error('Preencha código ANS e tipo');
+      return;
+    }
     setSaving(true);
     try {
       if (editingId) {
-        const payload: ConvenioAtualizacao = {
-          nome: formData.nome,
-          ...(formData.codigoAns && { codigoAns: formData.codigoAns }),
-        };
+        const payload: ConvenioAtualizacao = { nome: formData.nome };
         await conveniosApi.update(editingId, payload);
         toast.success('Convênio atualizado');
       } else {
         const payload: ConvenioCadastro = {
           nome: formData.nome,
-          ...(formData.codigoAns && { codigoAns: formData.codigoAns }),
+          codigoANS: formData.codigoANS,
+          tipo: formData.tipo as TipoConvenio,
         };
         await conveniosApi.create(payload);
         toast.success('Convênio cadastrado');
@@ -168,6 +178,7 @@ export default function InsurancePage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Código ANS</TableHead>
+                    <TableHead>Tipo</TableHead>
                     {allowWrite && <TableHead>Ações</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -176,8 +187,9 @@ export default function InsurancePage() {
                     <TableRow key={conv.id}>
                       <TableCell className="font-medium">{conv.nome}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {conv.codigoAns ?? '—'}
+                        {conv.codigoANS ?? '—'}
                       </TableCell>
+                      <TableCell>{conv.tipo === 'PARTICULAR' ? 'Particular' : conv.tipo === 'PLANO' ? 'Plano' : '—'}</TableCell>
                       {allowWrite && (
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -237,13 +249,30 @@ export default function InsurancePage() {
               />
             </div>
             <div>
-              <Label className="mb-1.5 block" htmlFor="codigoAns">Código ANS</Label>
+              <Label className="mb-1.5 block" htmlFor="codigoANS">Código ANS {!editingId && '*'}</Label>
               <Input
-                id="codigoAns"
-                value={formData.codigoAns}
-                onChange={e => setFormData(p => ({ ...p, codigoAns: e.target.value }))}
-                placeholder="Ex: 34028-1"
+                id="codigoANS"
+                value={formData.codigoANS}
+                disabled={!!editingId}
+                onChange={e => setFormData(p => ({ ...p, codigoANS: e.target.value }))}
+                placeholder="Ex: 123456"
               />
+            </div>
+            <div>
+              <Label className="mb-1.5 block">Tipo {!editingId && '*'}</Label>
+              <Select
+                value={formData.tipo}
+                onValueChange={v => setFormData(p => ({ ...p, tipo: v as TipoConvenio }))}
+                disabled={!!editingId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PLANO">Plano de Saúde</SelectItem>
+                  <SelectItem value="PARTICULAR">Particular</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-3 pt-2 border-t">
               <Button variant="outline" onClick={handleCloseModal} disabled={saving}>Cancelar</Button>

@@ -296,6 +296,28 @@ GET /ia/resumo-historico/{paciente_id}
 
 ---
 
+## Gaps do Frontend
+
+Backend completo. Frontend parcialmente conectado — os itens abaixo têm controller e migration mas **sem página/rota no frontend**.
+
+| Controller | API Module (`frontend/src/api/`) | Página | Prioridade |
+|---|---|---|---|
+| `DisponibilidadeMedicoController` | `disponibilidade.ts` ✅ | ❌ sem página nem rota | Alta — módulo API já existe |
+| `MedicoConvenioController` | ❌ | ❌ | Média — pode ser aba em `/doctors` |
+| `ConvenioPacienteController` | ❌ | ❌ | Média — pode ser aba em `/patients` |
+| `AuditoriaController` | ❌ | ❌ | Baixa — tela restrita a `ROLE_ADMIN` |
+| `IaController` | ❌ | ❌ | Baixa — maior esforço, UX a definir |
+
+### Ordem sugerida de implementação
+
+1. **Disponibilidade do médico** — criar página `/availability`, listar/criar/remover horários por médico. Módulo `disponibilidade.ts` já existe.
+2. **Convênios do médico** — adicionar aba ou modal em `/doctors` usando `MedicoConvenioController`.
+3. **Convênios do paciente** — adicionar aba ou modal em `/patients` usando `ConvenioPacienteController`.
+4. **Auditoria** — página `/audit` visível apenas para `ROLE_ADMIN`, exibe log de acessos ao prontuário.
+5. **IA** — definir UX (painel dentro de prontuário? página separada?), criar `api/ia.ts`, implementar as três features (pré-diagnóstico, laudo, resumo histórico).
+
+---
+
 ## Resumo de migrations
 
 | Migration | Descrição | Status |
@@ -312,3 +334,4 @@ GET /ia/resumo-historico/{paciente_id}
 | `V20` | Adicionar colunas de auditoria (`criado_em`, `atualizado_em`) em todas as entidades | Aplicado |
 | `V21` | Criar tabela `especialidades`, migrar FK em `medicos`, remover coluna enum | Aplicado |
 | `V22` | Criar tabela `medico_convenios` (N:N médico ↔ convênio) | Aplicado |
+| `V23` | Ampliar `pacientes.telefone` de `CHAR(11)` para `VARCHAR(20)` | Aplicado |

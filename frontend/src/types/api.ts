@@ -31,20 +31,55 @@ export interface EspecialidadeAtualizacao {
 }
 
 // --- Convênio ---
+export type TipoConvenio = 'PARTICULAR' | 'PLANO'
+
 export interface ConvenioListagem {
   id: number
   nome: string
-  codigoAns?: string
+  codigoANS?: string
+  tipo?: TipoConvenio
+}
+
+// --- Médico-Convênio ---
+export interface MedicoConvenioListagem {
+  id: number
+  convenioId: number
+  nomeConvenio: string
+  codigoANS?: string
+  tipo: TipoConvenio
+}
+
+export interface MedicoConvenioVinculo {
+  convenioId: number
+}
+
+// --- Convênio-Paciente ---
+export interface ConvenioPacienteListagem {
+  id: number
+  pacienteId: number
+  nomePaciente: string
+  convenioId: number
+  nomeConvenio: string
+  codigoANS?: string
+  tipoConvenio: TipoConvenio
+  numeroCarteirinha: string
+  validade?: string
+}
+
+export interface ConvenioPacienteCadastro {
+  convenioId: number
+  numeroCarteirinha: string
+  validade?: string
 }
 
 export interface ConvenioCadastro {
   nome: string
-  codigoAns?: string
+  codigoANS: string
+  tipo: TipoConvenio
 }
 
 export interface ConvenioAtualizacao {
   nome?: string
-  codigoAns?: string
 }
 
 // --- Médico ---

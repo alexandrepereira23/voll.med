@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
 import {
   Dialog,
   DialogContent,
@@ -20,11 +21,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Edit, Trash2, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { pacientesApi } from '@/api/pacientes';
+import { convenioPacienteApi } from '@/api/convenioPaciente';
+import { conveniosApi } from '@/api/convenios';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/rbac';
 import { extractApiError } from '@/lib/utils';
@@ -34,6 +44,8 @@ import type {
   PacienteCadastro,
   PacienteAtualizacao,
   EnderecoPayload,
+  ConvenioPacienteListagem,
+  ConvenioListagem,
 } from '@/types/api';
 
 type FormEndereco = Partial<EnderecoPayload>;
@@ -68,6 +80,15 @@ export default function Patients() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
+
+  // Convênios modal
+  const [isConveniosOpen, setIsConveniosOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<PacienteListagem | null>(null);
+  const [conveniosPaciente, setConveniosPaciente] = useState<ConvenioPacienteListagem[]>([]);
+  const [conveniosLoading, setConveniosLoading] = useState(false);
+  const [conveniosList, setConveniosList] = useState<ConvenioListagem[]>([]);
+  const [convenioForm, setConvenioForm] = useState({ convenioId: '', numeroCarteirinha: '', validade: '' });
+  const [savingConvenio, setSavingConvenio] = useState(false);
 
   const fetchPatients = async (p = page) => {
     setLoading(true);
@@ -163,6 +184,55 @@ export default function Patients() {
     }
   };
 
+  const handleOpenConvenios = async (patient: PacienteListagem) => {
+    setSelectedPatient(patient);
+    setConvenioForm({ convenioId: '', numeroCarteirinha: '', validade: '' });
+    setIsConveniosOpen(true);
+    setConveniosLoading(true);
+    try {
+      const [vinculados, todos] = await Promise.all([
+        convenioPacienteApi.list(patient.id),
+        conveniosApi.listAll(),
+      ]);
+      setConveniosPaciente(vinculados.content);
+      setConveniosList(todos);
+    } catch {
+      toast.error('Erro ao carregar convênios');
+    } finally {
+      setConveniosLoading(false);
+    }
+  };
+
+  const handleAssociarConvenio = async () => {
+    if (!convenioForm.convenioId || !convenioForm.numeroCarteirinha || !selectedPatient) return;
+    setSavingConvenio(true);
+    try {
+      const novo = await convenioPacienteApi.associar(selectedPatient.id, {
+        convenioId: Number(convenioForm.convenioId),
+        numeroCarteirinha: convenioForm.numeroCarteirinha,
+        validade: convenioForm.validade || undefined,
+      });
+      setConveniosPaciente(prev => [...prev, novo]);
+      setConvenioForm({ convenioId: '', numeroCarteirinha: '', validade: '' });
+      toast.success('Convênio associado');
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'Erro ao associar convênio'));
+    } finally {
+      setSavingConvenio(false);
+    }
+  };
+
+  const handleRemoverConvenio = async (convenioPacienteId: number) => {
+    if (!selectedPatient) return;
+    try {
+      await convenioPacienteApi.remover(selectedPatient.id, convenioPacienteId);
+      setConveniosPaciente(prev => prev.filter(c => c.id !== convenioPacienteId));
+      toast.success('Convênio removido');
+    } catch {
+      toast.error('Erro ao remover convênio');
+    }
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await pacientesApi.remove(id);
@@ -219,6 +289,9 @@ export default function Patients() {
                       {allowWrite && (
                         <TableCell>
                           <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" title="Gerenciar convênios" onClick={() => handleOpenConvenios(patient)}>
+                              <CreditCard className="h-4 w-4 text-primary" />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleOpenModal(patient)}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -403,6 +476,106 @@ export default function Patients() {
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? 'Salvando...' : editingId ? 'Atualizar' : 'Cadastrar'}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Convênios Modal */}
+      <Dialog open={isConveniosOpen} onOpenChange={setIsConveniosOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Convênios — {selectedPatient?.nome}</DialogTitle>
+            <DialogDescription>Gerencie os planos de saúde deste paciente</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-sm font-semibold mb-4 text-foreground">Associar Convênio</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <Label className="mb-1.5 block">Convênio *</Label>
+                  <Select
+                    value={convenioForm.convenioId}
+                    onValueChange={v => setConvenioForm(p => ({ ...p, convenioId: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {conveniosList.map(c => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="mb-1.5 block" htmlFor="carteirinha">Carteirinha *</Label>
+                  <Input
+                    id="carteirinha"
+                    value={convenioForm.numeroCarteirinha}
+                    onChange={e => setConvenioForm(p => ({ ...p, numeroCarteirinha: e.target.value }))}
+                    placeholder="0001234567890"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block" htmlFor="validade">Validade</Label>
+                  <Input
+                    id="validade"
+                    type="date"
+                    value={convenioForm.validade}
+                    onChange={e => setConvenioForm(p => ({ ...p, validade: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <Button
+                className="mt-4"
+                onClick={handleAssociarConvenio}
+                disabled={!convenioForm.convenioId || !convenioForm.numeroCarteirinha || savingConvenio}
+              >
+                {savingConvenio ? 'Associando...' : 'Associar'}
+              </Button>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold mb-3 text-foreground">Convênios Associados</h3>
+              {conveniosLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando...</p>
+              ) : conveniosPaciente.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum convênio associado.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Convênio</TableHead>
+                      <TableHead>Carteirinha</TableHead>
+                      <TableHead>Validade</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {conveniosPaciente.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.nomeConvenio}</TableCell>
+                        <TableCell>{c.numeroCarteirinha}</TableCell>
+                        <TableCell>
+                          {c.validade
+                            ? new Date(c.validade).toLocaleDateString('pt-BR')
+                            : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm" onClick={() => handleRemoverConvenio(c.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t">
+              <Button variant="outline" onClick={() => setIsConveniosOpen(false)}>Fechar</Button>
             </div>
           </div>
         </DialogContent>
