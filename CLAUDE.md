@@ -5,25 +5,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Subir o banco de dados (MySQL 8.0 na porta 3307)
-docker-compose up -d
+# Subir o banco de dados (MySQL 8.0 na porta 3307) — rodar da raiz do projeto
+docker compose --env-file backend/.env up -d
 
-# Executar a aplicação
-./mvnw spring-boot:run
+# Executar a aplicação — rodar de dentro de backend/
+cd backend && ./mvnw spring-boot:run
 
 # Build completo (usar este após mudanças em @Value ou configuração — não confiar apenas no devtools)
-./mvnw clean package
+cd backend && ./mvnw clean package
 
 # Rodar testes
-./mvnw test
+cd backend && ./mvnw test
 
 # Rodar um único teste
-./mvnw test -Dtest=NomeDaClasseTest
+cd backend && ./mvnw test -Dtest=NomeDaClasseTest
 ```
 
 ## Variáveis de ambiente (.env)
 
-A aplicação lê `.env` via `spring.config.import=optional:file:.env[.properties]`. O padrão do projeto é: variável no `.env` → mapeada em `application.properties` → lida via `@Value`.
+A aplicação lê `.env` via `spring.config.import=optional:file:../.env[.properties]` (caminho relativo à raiz do projeto). O padrão do projeto é: variável no `.env` → mapeada em `application.properties` → lida via `@Value`.
 
 | Variável no .env | Propriedade Spring | Descrição |
 |------------------|--------------------|-----------|
