@@ -79,7 +79,8 @@ Perfis recomendados para ambiente profissional:
 
   "data": "2025-01-15T10:00",
   "prioridade": "ROTINA",     // ROTINA (30 min) | PRIORITARIO (10 min) | URGENCIA (sem restrição). Padrão: ROTINA
-  "consultaOrigemId": null    // ID da consulta original, para agendar retorno
+  "consultaOrigemId": null,   // ID da consulta original, para agendar retorno
+  "convenioId": null          // opcional, quando a consulta usa convênio/plano
 }
 ```
 
@@ -258,6 +259,6 @@ Perfis recomendados para ambiente profissional:
 ## Notas gerais
 
 - Todos os endpoints paginados aceitam `?page=0&size=10&sort=campo,asc`
-- Respostas de erro seguem o padrão `{ "campo": "mensagem" }` (validação) ou `{ "mensagem": "..." }` (negócio)
+- Respostas de erro podem vir como lista de `{ "campo": "...", "mensagem": "..." }` para validação/conflito ou como mensagem simples para exceções de negócio
 - Rate limiting ativo em `/auth/*`: máx. 10 req/IP em 15 min → HTTP 429
 - Documentação interativa disponível em `/swagger-ui.html` (perfil dev)

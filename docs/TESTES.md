@@ -1,165 +1,172 @@
-# Testes Automatizados — API Voll.med
+# Testes Automatizados — Voll.med
 
-Suite com **157 testes**, 0 falhas. JUnit 5 + Mockito + Spring Boot Test.
+Este documento registra a estrategia de testes, comandos de validacao e pendencias de cobertura do projeto.
 
----
+## Estado Atual
 
-## Como executar
+Validado nesta revisao documental:
+
+- Backend: **196 testes passando** com `./mvnw test` em `backend/`.
+- Frontend: **29 testes passando** com `npm test` em `frontend/`.
+- Frontend audit: `npm audit` reporta **5 vulnerabilidades**: 3 moderadas e 2 altas.
+
+## Comandos
+
+### Backend
+
+Linux/macOS/Git Bash:
 
 ```bash
-# Entrar no backend a partir da raiz
 cd backend
-
-# Suite completa
 ./mvnw test
+```
 
-# Classe específica
+Windows PowerShell:
+
+```powershell
+Set-Location backend
+.\mvnw test
+```
+
+Classe especifica:
+
+```bash
+cd backend
 ./mvnw test -Dtest=AgendaDeConsultasTest
+```
 
-# Múltiplas classes
+Multiplas classes:
+
+```bash
+cd backend
 ./mvnw test -Dtest="ConsultaControllerTest,AgendaDeConsultasTest"
 ```
 
-No frontend, executar a partir de `frontend/`:
+### Frontend
+
+Linux/macOS/Git Bash:
 
 ```bash
+cd frontend
 npm test
 npm run check
 npm run build
 npm audit
 ```
 
-`npm test` roda Vitest + Testing Library (5 arquivos, 22 testes), incluindo `pages/Users.test.tsx` — carregamento/vazio/erro/retry do seletor de médicos disponíveis, payload de cadastro (com e sem `medicoId`) e tradução do perfil `ROLE_ADMIN` na listagem.
+Windows PowerShell:
 
-`npm audit` reporta atualmente 1 vulnerabilidade alta (transitiva, `nanoid` via `postcss`), pendente de correção — não introduzida pelo fluxo de cadastro de usuário.
-
----
-
-## Estratégia
-
-### Testes unitários (`@ExtendWith(MockitoExtension.class)`)
-
-Sem contexto Spring. Testam lógica isolada com dependências mockadas via Mockito.
-
-- **Quando usar:** services com regras de negócio complexas, validadores de domínio
-- **Velocidade:** rápidos (< 1s por classe)
-
-### Testes de controller (`@WebMvcTest`)
-
-Carregam apenas a camada web (controller + segurança). Services são `@MockBean`. Sem JPA, sem banco.
-
-- **Quando usar:** validar rotas, roles (`@PreAuthorize`), status HTTP, serialização JSON
-- **Configurações necessárias:** `@Import(MethodSecurityTestConfig.class)` + `@MockBean(JpaMetamodelMappingContext.class)` (ver `docs/DECISOES_TECNICAS.md`)
-
----
-
-## Classes de teste
-
-### Testes de domínio / service
-
-| Classe | Testes | O que cobre |
-|--------|--------|-------------|
-| `ApiApplicationTests` | 1 | Inicialização do contexto Spring Boot com H2 e configurações de teste |
-| `AgendaDeConsultasTest` | 17 | Todas as validações de agendamento (horário, antecedência, disponibilidade, convênio) e cancelamento |
-| `ProntuarioServiceTest` | 7 | Criação (403/409/400), edição (422 janela expirada, 403 médico errado), 404 |
-| `EspecialidadeServiceTest` | 8 | CRUD, nome duplicado (409), inativação |
-| `UsuarioServiceTest` | 11 | Listagem de médicos disponíveis, cadastro (funcionário/médico), médico inexistente/inativo/já vinculado (409), medicoId ausente/indevido (400), tentativa de criar ADMIN (403), login duplicado (409), conflito de integridade concorrente (409) |
-| `IaServiceTest` | 6 | Mock do `RestClient`, vínculo médico, sem prontuários, pré-diagnóstico, laudo, resumo histórico |
-| `AuditoriaProntuarioAspectTest` | 2 | Auditoria AOP para prescrição e atestado com tipo/id de recurso clínico |
-| `SecurityFillterTest` | 3 | Validação de token JWT, autenticação no `SecurityContext` e bypass de requisições sem token |
-
-### Testes de controller
-
-| Classe | Testes | O que cobre |
-|--------|--------|-------------|
-| `AtestadoControllerTest` | 6 | Emitir (MEDICO), detalhar/listar, 403, 401 |
-| `AuditoriaControllerTest` | 4 | Acesso à trilha LGPD por prontuário/recurso restrito a AUDITOR/GESTOR |
-| `AutenticacaoControllerTest` | 14 | Login (200+token), cadastro/listagem de usuários (ADMIN), validação de vínculo médico, bloqueios por role, login duplicado, `GET /auth/medicos-disponiveis` (200 ADMIN, 403 demais perfis, 401 anônimo) |
-| `ConsultaControllerTest` | 7 | Agendar/cancelar (FUNCIONARIO), listar por roles, 403 para ações indevidas |
-| `ConvenioControllerTest` | 10 | CRUD de convênios, paginação, permissões por role |
-| `ConvenioPacienteControllerTest` | 6 | Associar/listar/remover convênio do paciente e permissões |
-| `DisponibilidadeMedicoControllerTest` | 6 | RBAC e operações de disponibilidade médica |
-| `EspecialidadeControllerTest` | 10 | CRUD (FUNCIONARIO), listar/detalhar por roles, bloqueios |
-| `MedicoControllerTest` | 8 | CRUD, 401 sem auth, 403 para MEDICO em escrita e 403 para ADMIN na leitura operacional |
-| `MedicoConvenioControllerTest` | 4 | Vincular/listar/remover convênios aceitos pelo médico |
-| `PacientesControllerTest` | 10 | CRUD, listagem/detalhamento filtrado, 401 sem auth, 403 em endpoints restritos |
-| `PrescricaoControllerTest` | 6 | Criar (MEDICO), detalhar/listar, 403, 401 |
-| `ProntuarioControllerTest` | 11 | Criar/editar (MEDICO), inativar (AUDITOR/GESTOR), listar/detalhar por roles, 403 |
-
----
-
-## Configurações de teste
-
-### `MethodSecurityTestConfig`
-
-```java
-@TestConfiguration
-@EnableMethodSecurity
-public class MethodSecurityTestConfig {}
+```powershell
+Set-Location frontend
+npm test
+npm run check
+npm run build
+npm audit
 ```
 
-Necessário porque `@WebMvcTest` não garante que `@EnableMethodSecurity` seja ativado. Sem isso, `@PreAuthorize` é ignorado.
+`npm test` executa Vitest + Testing Library. `npm run check` executa `tsc --noEmit`. `npm run build` executa typecheck incremental (`tsc -b`) e build Vite.
 
-### `backend/src/test/resources/application.properties`
+## Estrategia de Testes Backend
+
+### Testes Unitarios e de Service
+
+Usam JUnit 5 e Mockito para validar regras de negocio sem subir o contexto web completo.
+
+| Classe | Testes | Cobertura principal |
+|---|---:|---|
+| `ApiApplicationTests` | 1 | Inicializacao do contexto Spring Boot com H2 |
+| `AgendaDeConsultasTest` | 17 | Agendamento, cancelamento, prioridade, retorno, disponibilidade e convenio |
+| `ProntuarioServiceTest` | 7 | Criacao, ownership, janela de edicao e erros de prontuario |
+| `EspecialidadeServiceTest` | 8 | CRUD, duplicidade e inativacao |
+| `UsuarioServiceTest` | 11 | Cadastro de usuarios, vinculo medico e conflitos |
+| `IaServiceTest` | 6 | Chamadas mockadas para IA e regras de contexto medico |
+| `AuditoriaProntuarioAspectTest` | 2 | Auditoria AOP para recursos clinicos |
+| `SecurityFillterTest` | 3 | Token JWT e preenchimento do `SecurityContext` |
+| `ConsultaCepServiceTest` | 10 | Validacao, normalizacao e erros de CEP |
+| `RestClientCepClientTest` | 7 | Integracao backend-to-backend com API de CEP |
+
+### Testes de Controller (`@WebMvcTest`)
+
+Validam rotas, serializacao, status HTTP e autorizacao por `@PreAuthorize`.
+
+| Classe | Testes | Cobertura principal |
+|---|---:|---|
+| `AtestadoControllerTest` | 10 | Emissao/listagem/detalhamento e permissoes |
+| `AuditoriaControllerTest` | 4 | Auditoria LGPD restrita a auditor/gestor |
+| `AutenticacaoControllerTest` | 14 | Login, cadastro/listagem de usuarios e medicos disponiveis |
+| `ConsultaControllerTest` | 7 | Agendar, listar e cancelar consultas por role |
+| `ConvenioControllerTest` | 10 | CRUD de convenios e RBAC |
+| `ConvenioPacienteControllerTest` | 6 | Vinculo de convenio ao paciente |
+| `DisponibilidadeMedicoControllerTest` | 6 | Disponibilidade medica e permissoes |
+| `EnderecoControllerTest` | 8 | `GET /enderecos/cep/{cep}` e permissoes |
+| `EspecialidadeControllerTest` | 10 | CRUD de especialidades e permissoes |
+| `MedicoControllerTest` | 8 | CRUD de medicos e restricoes por role |
+| `MedicoConvenioControllerTest` | 4 | Convenios aceitos pelo medico |
+| `PacientesControllerTest` | 10 | CRUD/listagem filtrada de pacientes |
+| `PrescricaoControllerTest` | 10 | Criacao, detalhamento/listagem e permissoes |
+| `ProntuarioControllerTest` | 17 | Criacao, listagem, edicao, inativacao e permissoes |
+
+## Estrategia de Testes Frontend
+
+Arquivos atuais de teste:
+
+| Arquivo | Testes | Cobertura principal |
+|---|---:|---|
+| `frontend/src/api/cep.test.ts` | 2 | Cliente de CEP chama `/enderecos/cep/{cep}` e propaga erro |
+| `frontend/src/api/axios.test.ts` | 5 | Interceptor JWT, 401, 403 e login |
+| `frontend/src/contexts/AuthContext.test.tsx` | 3 | Persistencia de sessao, limpeza em 401 e logout |
+| `frontend/src/components/dashboard/FuncionarioDashboard.test.tsx` | 6 | Dashboard, agenda do dia, loading, erro e retry |
+| `frontend/src/pages/Doctors.cep.test.tsx` | 3 | Busca de CEP no cadastro de medico |
+| `frontend/src/pages/Patients.cep.test.tsx` | 2 | Busca de CEP e payload sanitizado no cadastro de paciente |
+| `frontend/src/pages/Login.test.tsx` | 2 | Token invalido e erro de login |
+| `frontend/src/pages/Users.test.tsx` | 6 | Cadastro de usuarios e seletor de medicos disponiveis |
+
+## Configuracoes de Teste
+
+### Backend
+
+`backend/src/test/resources/application.properties` usa H2 em memoria e desabilita Flyway:
 
 ```properties
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.config.import=
+spring.datasource.url=jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1
 spring.flyway.enabled=false
 spring.jpa.hibernate.ddl-auto=create-drop
 api.security.token.secret=testSecretKeyForTestingPurposesAtLeast32Chars
 ```
 
-H2 em memória. Flyway desabilitado — algumas migrations usam sintaxe MySQL incompatível com H2. O schema é criado pelo Hibernate a partir das entidades JPA.
+Flyway fica desabilitado nos testes porque algumas migrations usam sintaxe especifica de MySQL. O schema de teste e criado pelo Hibernate a partir das entidades JPA.
 
----
+### `@WebMvcTest`
 
-## Padrões de autenticação nos testes
+- Usar `@Import(MethodSecurityTestConfig.class)` para ativar `@EnableMethodSecurity` no slice web.
+- Usar `@MockBean(JpaMetamodelMappingContext.class)` por causa do `@EnableJpaAuditing` global.
+- Autenticar com `.with(user(new Usuario(...)))` quando o controller recebe `@AuthenticationPrincipal Usuario`.
+- Adicionar `.with(csrf())` em POST/PUT/DELETE dos testes de controller.
 
-### `@WebMvcTest` com `@AuthenticationPrincipal Usuario`
+## Testes de Integracao
 
-Usar `.with(user(new Usuario(id, login, senha, Perfil.ROLE_XXX, null)))` — não `@WithMockUser`.
+A suite atual usa H2 para contexto Spring e mocks para clientes externos. A integracao CEP possui testes unitarios/service/client, mas nao sobe um servidor real do `Consultar-Cep`. O lock pessimista do vinculo medico-usuario tambem esta coberto por teste unitario, nao por uma corrida real em MySQL.
 
-`@WithMockUser` cria um `User` padrão do Spring Security, não assignável ao `Usuario` customizado. O parâmetro `@AuthenticationPrincipal Usuario` receberia `null`.
+## Pendencias de Teste
 
-```java
-mvc.perform(post("/consultas")
-    .with(user(new Usuario(1L, "func@test.com", "senha", Perfil.ROLE_FUNCIONARIO, null)))
-    .with(csrf())
-    ...)
-```
+- Criar E2E smoke tests para login.
+- Cobrir navegacao principal por perfil.
+- Cobrir cadastro de medico via UI com busca de CEP.
+- Cobrir cadastro de paciente via UI com busca de CEP.
+- Cobrir agendamento de consulta via UI.
+- Cobrir fluxo completo de consulta quando os estados adicionais forem implementados.
+- Avaliar teste de concorrencia real para vinculo medico-usuario usando MySQL/Testcontainers ou stack Docker local.
+- Tratar vulnerabilidades reportadas por `npm audit` e reexecutar auditoria.
 
-### Exceção: `AutenticacaoControllerTest.deveRetornarTokenAoFazerLogin`
+## Troubleshooting Docker Local
 
-Usa `@WithMockUser` porque o endpoint `/auth/login` é público mas `@WebMvcTest` não carrega a config de segurança real. Ver `docs/DECISOES_TECNICAS.md` para detalhes.
+Erro `SQL State: 08S01 / Communications link failure` no `backend-voll` geralmente indica corrida de inicializacao com o MySQL. O Compose usa healthcheck SQL real e retries do Flyway para mitigar.
 
-### Requisições mutantes (POST/PUT/DELETE)
-
-Sempre adicionar `.with(csrf())`. Sem CSRF token, Spring Security retorna 403 mesmo com usuário autenticado.
-
-### Validação dos containers
-
-O erro `SQL State: 08S01 / Communications link failure` no `backend-voll` indica falha de conexão inicial com o MySQL. A configuração Docker Compose usa healthcheck SQL real no `db` e retries do Flyway para evitar corrida de inicialização entre MySQL e backend.
-
-O erro `SQL State: HY000 / Error Code: 1130` com mensagem `Host '<ip>' is not allowed to connect to this MySQL server`, ou `Access denied for user 'root'@'localhost'` ao testar o próprio container, normalmente indica volume MySQL antigo com senha/grants incompatíveis com o `backend/.env` atual. Em ambiente local descartável, recriar o volume resolve:
+Erro `SQL State: HY000 / Error Code: 1130` ou `Access denied for user 'root'@'localhost'` pode indicar volume MySQL antigo com senha/grants incompatíveis com o `.env` atual. Em ambiente local descartavel:
 
 ```bash
 docker compose --env-file backend/.env down -v
 docker compose --env-file backend/.env up --build
 ```
 
-Não usar `down -v` se houver dados locais que precisam ser preservados.
-
-Com Docker Desktop ativo, validar a stack com:
-
-```bash
-docker compose --env-file backend/.env config
-docker compose --env-file backend/.env up --build
-docker compose --env-file backend/.env ps
-```
-
-Endpoints esperados após subir:
-
-- Frontend: `http://localhost:3000`
-- Backend/Swagger: `http://localhost:8080/swagger-ui.html`
-
+Nao use `down -v` se houver dados locais que precisam ser preservados.

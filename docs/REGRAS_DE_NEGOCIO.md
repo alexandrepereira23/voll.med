@@ -111,9 +111,21 @@ Este documento centraliza todas as regras de negócio implementadas na API, serv
 | 6 | `diasAfastamento` deve ser no mínimo 1 | 400 |
 | 7 | `cid10` e `observacoes` são opcionais | — |
 | 8 | `dataEmissao` é preenchida automaticamente com a data atual | — |
-| 9 | Exclusão é lógica (campo `ativo = false`), restrita a perfil com responsabilidade formal (`ROLE_AUDITOR` ou `ROLE_GESTOR`) | — |
 
 > Atenção: a leitura operacional de atestados por `ROLE_FUNCIONARIO` é uma permissão sensível e deve ser revisada em uma fase futura de privacidade clínica e mínimo acesso necessário.
+
+---
+
+## Endereços e CEP
+
+| # | Regra | Erro |
+|---|-------|------|
+| 1 | `GET /enderecos/cep/{cep}` aceita CEP com 8 dígitos, com ou sem máscara | 400 |
+| 2 | Apenas `ROLE_FUNCIONARIO` e `ROLE_ADMIN` podem consultar CEP | 403 |
+| 3 | A chave externa `X-API-Key` é usada somente pelo backend e nunca é exposta ao frontend | — |
+| 4 | CEP inexistente retorna 404 mapeado pelo backend | 404 |
+| 5 | Resposta incompleta ou erro de autenticação na API externa retorna erro de integração | 502 |
+| 6 | Timeout ou indisponibilidade da API externa retorna indisponibilidade temporária | 503 |
 
 ---
 
@@ -201,6 +213,7 @@ Modelo profissional recomendado:
 | `POST /atestados` | — | — | ✅ (do seu prontuário) | — |
 | `GET /atestados/{id}` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
 | `GET /atestados/paciente/{id}` | — | ✅ (leitura operacional) | ✅ (apenas os seus) | ✅ |
+| `GET /enderecos/cep/{cep}` | ✅ | ✅ | — | — |
 | `POST /ia/pre-diagnostico` | — | — | ✅ | — |
 | `POST /ia/gerar-laudo` | — | — | ✅ | — |
 | `GET /ia/resumo-historico/{pacienteId}` | — | — | ✅ | — |

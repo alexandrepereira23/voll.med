@@ -1,5 +1,7 @@
 # 🛠️ Plano de Evolução: RBAC e Camada de Serviço (API Voll.med)
 
+> **Documento historico/de evolucao.** Este arquivo registra o plano usado para evoluir RBAC e camada de servico. Algumas decisoes aqui ja foram implementadas e outras instrucoes podem ter sido superadas por documentos mais recentes. Para o estado atual, use como fonte principal `docs/REGRAS_DE_NEGOCIO.md`, `docs/ENDPOINTS.md`, `docs/DECISOES_TECNICAS.md`, `docs/TESTES.md` e `docs/BACKLOG.md`.
+
 Este documento serve como o "Contexto Mestre" para a implementação do controle de acesso baseado em perfis (**Role-Based Access Control**) e a refatoração para a **Camada de Serviço**.
 
 ## 📌 Visão Geral da Mudança

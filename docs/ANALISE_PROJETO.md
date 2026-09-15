@@ -1,20 +1,21 @@
-# Análise do Projeto Voll.med
+# Analise do Projeto Voll.med
 
-Este documento consolida o estado atual do repositório e aponta divergências já corrigidas na documentação principal.
+Este documento consolida o estado atual do repositorio e separa funcionalidades implementadas, riscos tecnicos e proximas fases recomendadas.
 
-## Resumo
+## Resumo Executivo
 
-O Voll.med está estruturado como monorepo fullstack com backend Spring Boot, frontend React, Docker Compose para stack local, migrations Flyway e documentação técnica em `docs/` e `frontend/docs/`.
+O Voll.med esta estruturado como monorepo fullstack com backend Spring Boot, frontend React, MySQL/Flyway, Docker Compose, JWT/RBAC, IA clinica e integracao segura com o servico proprio `Consultar-Cep`.
 
-Estado atual documentado:
+Estado validado nesta revisao:
 
-- Backend completo até a migration `V25` (`V26` será a próxima).
-- Suite backend com **157 testes** passando em `docs/TESTES.md`.
-- Frontend React 19 conectado à API real, incluindo dashboard operacional, auditoria LGPD e IA clínica.
-- Integração com Anthropic API disponível no backend e consumida pela rota frontend `/clinical-ai`.
-- Docker Compose fullstack usa `backend/.env` via `--env-file backend/.env`.
+- Backend completo ate a migration `V25`; proxima migration esperada: `V26`.
+- Backend com **196 testes passando** em `./mvnw test`.
+- Frontend com **29 testes passando** em `npm test`.
+- Frontend conectado a API real nos modulos principais.
+- Integracao CEP implementada ponta a ponta: backend gateway, `X-API-Key` apenas no backend e autopreenchimento nos formularios.
+- Deploy inicial: backend no Railway e frontend no Vercel.
 
-## Estrutura Real do Projeto
+## Estrutura Real
 
 ```text
 .
@@ -22,150 +23,104 @@ Estado atual documentado:
 ├── frontend/
 ├── docs/
 ├── docker-compose.yml
-├── README.md
 ├── AGENTS.md
-└── CLAUDE.md
+└── README.md
 ```
 
-O backend real está em `backend/` e o frontend real está em `frontend/`.
+## O Que Ja Esta Implementado
 
-## Backend
+### Backend
 
-Funcionalidades implementadas:
-
-- Autenticação JWT em `/auth/login`.
-- Cadastro de usuários em `/auth/cadastro`.
-- Listagem de usuários em `/auth/usuarios`.
+- Autenticacao JWT em `/auth/login`.
 - RBAC com `ROLE_ADMIN`, `ROLE_FUNCIONARIO`, `ROLE_MEDICO`, `ROLE_AUDITOR` e `ROLE_GESTOR`.
-- Vínculo obrigatório de usuário médico com `medicoId` livre ao criar `ROLE_MEDICO`, com descoberta via `GET /auth/medicos-disponiveis` (`ROLE_ADMIN`) e bloqueio pessimista contra vínculo concorrente.
-- CRUD de médicos e pacientes com exclusão lógica.
-- Agendamento e cancelamento de consultas.
-- Triagem por prioridade da consulta.
-- Retorno de consulta.
-- Registro de quem cancelou a consulta.
-- Prontuário eletrônico.
-- Prescrições.
-- Atestados.
-- Convênios.
-- Convênios associados ao paciente.
-- Convênios aceitos pelo médico.
-- Disponibilidade de médicos.
-- Auditoria LGPD de prontuários, prescrições e atestados.
-- Auditoria JPA em entidades.
-- Especialidades como entidade/tabela.
-- IA clínica via `/ia/*` restrita a `ROLE_MEDICO`.
-- Swagger habilitado em desenvolvimento.
-- Flyway com migrations de `V1` a `V25`.
+- Cadastro/listagem de usuarios por `ROLE_ADMIN`.
+- Descoberta de medicos vinculaveis via `GET /auth/medicos-disponiveis`.
+- Vinculo transacional usuario-medico com bloqueio pessimista.
+- CRUD de medicos, pacientes, especialidades e convenios.
+- Agendamento/cancelamento de consultas com prioridade, retorno, disponibilidade real, convenio e `canceladoPor`.
+- Prontuario eletronico com ownership do medico e janela de edicao.
+- Prescricoes e atestados vinculados a prontuario.
+- Disponibilidade medica.
+- Convenios aceitos por medico e convenios de paciente.
+- Auditoria LGPD para prontuarios, prescricoes e atestados.
+- Auditoria JPA de entidades.
+- IA clinica restrita a `ROLE_MEDICO`.
+- Gateway seguro para consulta de CEP.
 
-## Frontend
+### Frontend
 
-O frontend já cobre os principais módulos operacionais e está conectado à API real.
-
-Páginas e rotas atuais:
+Rotas principais em `frontend/src/App.tsx`:
 
 - `/login` — login.
-- `/` — dashboard.
-- `/users` — usuários, restrita a `ROLE_ADMIN` (`AdminRoute`).
-- `/doctors` — médicos.
-- `/patients` — pacientes.
+- `/` — dashboard operacional.
+- `/users` — usuarios, apenas `ROLE_ADMIN`.
+- `/doctors` — medicos, com busca de CEP.
+- `/patients` — pacientes, com busca de CEP.
 - `/appointments` — consultas.
-- `/medical-records` — prontuários.
-- `/prescriptions` — prescrições.
+- `/medical-records` — prontuarios.
+- `/prescriptions` — prescricoes.
 - `/certificates` — atestados.
 - `/specialties` — especialidades.
-- `/insurance` — convênios.
-- `/availability` — disponibilidade médica.
-- `/audit` — auditoria LGPD para `ROLE_AUDITOR`/`ROLE_GESTOR`.
-- `/clinical-ai` — IA clínica para `ROLE_MEDICO`.
+- `/insurance` — convenios.
+- `/availability` — disponibilidade medica.
+- `/audit` — auditoria para `ROLE_AUDITOR`/`ROLE_GESTOR`.
+- `/clinical-ai` — IA clinica para `ROLE_MEDICO`.
+- `/404` e rota fallback — pagina nao encontrada.
 
-Arquivos relevantes:
+## Integracao CEP Consolidada
 
-- `frontend/src/App.tsx`
-- `frontend/src/pages/ClinicalAI.tsx`
-- `frontend/src/api/ia.ts`
-- `frontend/src/pages/Availability.tsx`
-- `frontend/src/pages/Audit.tsx`
-- `frontend/src/pages/Users.tsx`
-- `frontend/src/api/disponibilidade.ts`
-- `frontend/src/api/auditoria.ts`
-- `frontend/src/api/medicoConvenios.ts`
-- `frontend/src/api/convenioPaciente.ts`
+A integracao com o `Consultar-Cep` foi implementada como gateway backend:
 
-## Documentação Atualizada
+- Frontend chama `GET /enderecos/cep/{cep}` no backend Voll.med.
+- Backend valida e normaliza CEP com 8 digitos.
+- Backend injeta `X-API-Key` na comunicacao backend-to-backend.
+- `CEP_API_BASE_URL` e `CEP_API_KEY` ficam no ambiente do backend.
+- Frontend nunca recebe segredo nem chama a API externa diretamente.
+- Formularios de medicos e pacientes usam a resposta para autopreencher endereco.
+- Testes cobrem service/client/controller no backend e fluxo de formulario no frontend.
 
-Arquivos alinhados com o estado atual:
+## Pontos Fortes Atuais
 
-- `README.md`: frontend descrito como conectado à API real, IA clínica backend/frontend e status até `V25`.
-- `AGENTS.md`: login corrigido para `/auth/login` e orientação de `JWT_SECRET` ajustada.
-- `CLAUDE.md`: perfis, rotas frontend, CORS, `ANTHROPIC_API_KEY` e exclusão lógica atualizados.
-- `docs/ENDPOINTS.md`: `POST /auth/cadastro` documenta `medicoId` obrigatório para `ROLE_MEDICO`.
-- `frontend/docs/API_CONTRATOS.md`: contrato de cadastro de usuário médico atualizado com `medicoId` e erros esperados.
-- `docs/REGRAS_DE_NEGOCIO.md`: regras de vínculo médico/usuário e permissões de IA clínica adicionadas.
-- `docs/TESTES.md`: troubleshooting de MySQL em Docker atualizado para erro `HY000/1130` e volume persistido incompatível.
-- `docs/PLANEJAMENTO.md`: seção de IA atualizada de ideia planejada para funcionalidade implementada.
+- Separacao clara de perfis e responsabilidades de acesso.
+- `ROLE_ADMIN` separado de leitura clinica e operacional.
+- Soft delete preservando historico clinico.
+- Flyway como fonte de verdade do schema.
+- Gateway de CEP evita vazamento de segredo em SPA.
+- Boa cobertura automatizada para controllers, services, seguranca, CEP e frontend critico.
+- Docker Compose funcional para stack local.
+- Documentacao tecnica distribuida em `docs/` e `frontend/docs/`.
 
-## Decisões de Acesso
+## Riscos Tecnicos Atuais
 
-`ROLE_ADMIN` é um perfil técnico-administrativo. Ele gerencia usuários, mas não acessa cadastros operacionais nem conteúdo clínico por padrão.
+- `npm audit` reporta vulnerabilidades pendentes no frontend (3 moderadas, 2 altas).
+- Ainda nao ha E2E smoke tests cobrindo browser real contra a stack.
+- `ROLE_FUNCIONARIO` possui leitura operacional de prontuarios, prescricoes e atestados; e uma decisao sensivel que precisa revisao de minimo acesso.
+- O lock pessimista de vinculo medico-usuario nao tem teste de concorrencia real com MySQL.
+- O seletor de medicos disponiveis carrega ate 100 registros; pode precisar busca/paginacao em bases maiores.
+- Code splitting do frontend ainda nao foi otimizado.
+- O usuario `ROLE_MEDICO` pode continuar autenticando se o medico vinculado for inativado; o acesso assistencial falha em fluxos que exigem medico ativo, mas a politica final de login ainda deve ser definida.
 
-Leitura operacional fica com `ROLE_FUNCIONARIO`. Leitura clínica ampla e auditoria ficam com `ROLE_AUDITOR`/`ROLE_GESTOR`. Atendimento clínico e IA ficam com `ROLE_MEDICO`, respeitando filtros por vínculo do médico logado.
+## Pendencias Reais
 
-## Testes
+As pendencias centralizadas estao em `docs/BACKLOG.md`. Principais itens:
 
-Comando principal:
+- E2E smoke tests.
+- Tratamento das vulnerabilidades npm.
+- Revisao de acesso de funcionarios a dados clinicos sensiveis.
+- Ciclo completo da consulta com estados adicionais.
+- Otimizacao/code splitting do frontend.
+- Melhorias de UX, loading, erro, acessibilidade e paginas de acesso negado.
 
-```bash
-cd backend
-./mvnw test
-```
+## Proximas Fases Recomendadas
 
-Suite validada: **157 testes**, 0 falhas.
+1. Finalizar atualizacao documental e manter `docs/BACKLOG.md` como fonte de pendencias.
+2. Implementar E2E smoke tests para login, navegacao, cadastros, CEP e agendamento.
+3. Corrigir ou mitigar vulnerabilidades do `npm audit`.
+4. Otimizar bundle/code splitting do frontend.
+5. Definir e implementar o ciclo completo de vida da consulta.
+6. Reavaliar permissoes sensiveis de funcionario sobre dados clinicos.
+7. Evoluir IA, auditoria, relatorios e metricas administrativas.
 
-Validação frontend documentada em `frontend/docs/ARCHITECTURE.md`:
+## Conclusao
 
-```bash
-cd frontend
-npm ci
-npm test
-npm run check
-npm run build
-```
-
-## Docker e Ambiente
-
-Padrão atual:
-
-```bash
-docker compose --env-file backend/.env up --build
-```
-
-O arquivo `backend/.env` é a fonte para backend local e Docker Compose. O backend em container usa `DB_HOST=db` e `DB_PORT=3306`; o host acessa MySQL por `localhost:${DB_PORT:-3307}`.
-
-Se o backend falhar com:
-
-```text
-Host '<ip>' is not allowed to connect to this MySQL server
-SQL State: HY000
-Error Code: 1130
-```
-
-e o próprio container MySQL também rejeitar a senha atual, o volume local provavelmente foi criado com credenciais antigas. Em ambiente descartável, recriar o volume resolve:
-
-```bash
-docker compose --env-file backend/.env down -v
-docker compose --env-file backend/.env up --build
-```
-
-Não usar `down -v` se houver dados locais a preservar.
-
-## Próximos Passos Recomendados
-
-1. Rodar `./mvnw test` em `backend/` após alterações de backend.
-2. Rodar `npm run check` e `npm run build` em `frontend/` após alterações de frontend.
-3. Adicionar E2E smoke tests para login e navegação principal.
-4. Avaliar code splitting para reduzir aviso de chunk grande do Vite.
-5. Resolver os itens em "Pendências conhecidas" de `docs/DECISOES_TECNICAS.md` (login≠e-mail do médico, paginação do seletor de médicos, teste de concorrência real, vulnerabilidade `nanoid`).
-
-## Conclusão
-
-O sistema está em estágio avançado: backend amplo, frontend conectado à API real, IA clínica implementada ponta a ponta e documentação principal alinhada ao estado atual. As pendências atuais são de validação contínua, E2E e otimização, não lacunas funcionais grandes como nas versões anteriores da documentação.
+O sistema esta em estagio avancado para um projeto fullstack de gestao clinica: backend amplo, frontend operacional, CEP integrado com seguranca, IA clinica e deploy inicial. As lacunas atuais estao concentradas em validacao ponta a ponta, hardening de dependencias, privacidade clinica fina, performance frontend e evolucoes funcionais planejadas.

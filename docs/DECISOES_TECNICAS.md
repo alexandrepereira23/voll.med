@@ -232,6 +232,12 @@ A clínica Voll.med consome a API própria de CEP (`Consultar-Cep`).
 
 Foi selecionado o endpoint `/api/v1/ceps/{cep}/detalhes` da API de CEP em vez de `/api/v1/ceps/{cep}` porque o endpoint básico omite o campo `complemento`.
 
+### Configuracao por Ambiente
+
+`CEP_API_BASE_URL` e `CEP_API_KEY` sao configuradas como variaveis de ambiente do backend e mapeadas em `application.properties` para `cep.api.base-url` e `cep.api.key`.
+
+O ambiente local pode apontar para uma instancia local do `Consultar-Cep` ou para uma URL publicada, desde que a chave usada seja adequada ao ambiente. Essa decisao evita recompilar o frontend ou expor segredo em variaveis `VITE_*`.
+
 ### Tolerância a Falhas e Códigos HTTP Padronizados
 
 - **Formato inválido (HTTP 400):** CEPs com formato divergente de 8 dígitos numéricos lançam `CepInvalidoException`.
@@ -241,12 +247,32 @@ Foi selecionado o endpoint `/api/v1/ceps/{cep}/detalhes` da API de CEP em vez de
 
 ---
 
+## Deploy
+
+### Railway para Backend
+
+O backend Spring Boot pode ser publicado no Railway com as mesmas variaveis de ambiente usadas localmente, ajustadas para producao (`DB_*`, `JWT_SECRET`, `ADMIN_*`, `ANTHROPIC_API_KEY`, `CEP_API_BASE_URL`, `CEP_API_KEY`).
+
+**Decisao:** manter segredos apenas no ambiente do provedor. O repositorio deve conter somente exemplos sem segredo real, como `backend/.env.example`.
+
+### Vercel para Frontend
+
+O frontend React/Vite e publicado no Vercel. A seguranca real permanece no backend; as guardas de rota do frontend sao apenas UX.
+
+**Decisao:** chamadas sensiveis continuam passando pelo backend Voll.med. O frontend nao recebe `CEP_API_KEY`, `ANTHROPIC_API_KEY` nem qualquer segredo backend-to-backend.
+
+### CORS
+
+`SecurityConfigurations` permite origens locais (`localhost`/`127.0.0.1`) e dominios Vercel do projeto, incluindo padrao `https://voll-*.vercel.app`.
+
+---
+
 ## Pendências conhecidas
 
-Itens identificados durante a Fase 1 do plano de correções (`GET /auth/medicos-disponiveis` e vínculo de usuário médico) que dependem de decisão de negócio ou ficaram fora do escopo do bugfix:
+Pendencias de produto, seguranca, teste e UX agora ficam centralizadas em `docs/BACKLOG.md`. Os itens abaixo sao historico tecnico identificado durante a Fase 1 do plano de correcoes (`GET /auth/medicos-disponiveis` e vinculo de usuario medico) e permanecem como referencia:
 
 1. **Login do usuário médico ≠ e-mail do médico por padrão.** O frontend deixou de pré-preencher o login com o e-mail do médico (a projeção `DadosMedicoDisponivelVinculoUsuario` não traz e-mail, propositalmente). Se a regra é que login e e-mail do médico devem ser iguais, isso precisa virar validação explícita no backend — hoje não é imposto.
 2. **Sem paginação real no seletor de médicos.** `GET /auth/medicos-disponiveis` busca até 100 registros de uma vez (`size=100`); se o volume de médicos ativos sem usuário crescer além disso, é necessário adicionar busca/paginação na tela.
 3. **Concorrência sem teste de integração real.** O `@Lock(PESSIMISTIC_WRITE)` em `findByIdComBloqueio` está implementado e coberto por teste unitário, mas não há teste de integração com duas requisições simultâneas contra MySQL (a suíte usa H2 com Flyway desabilitado).
-4. **`nanoid` com vulnerabilidade alta (transitiva).** `npm audit` no frontend reporta 1 vulnerabilidade alta em `nanoid` (via `postcss`); correção (`npm audit fix`) não aplicada por estar fora do escopo desta fase.
+4. **Vulnerabilidades npm pendentes.** `npm audit` no frontend reporta vulnerabilidades moderadas e altas; correcao (`npm audit fix`) nao aplicada por estar fora do escopo desta fase documental.
 5. **Ciclo de vida de médico inativado após vínculo.** Um usuário `ROLE_MEDICO` já vinculado continua autenticando normalmente mesmo se o médico for inativado depois — comportamento herdado, não alterado nesta fase (ver `AutenticacaoController`/`SecurityFillter`).
