@@ -1,7 +1,11 @@
 package med.voll.api.infra.exception;
 
 import jakarta.persistence.EntityNotFoundException;
+import med.voll.api.exception.CepInvalidoException;
+import med.voll.api.exception.CepNaoEncontradoException;
 import med.voll.api.exception.ConflitoException;
+import med.voll.api.exception.RespostaInvalidaCepException;
+import med.voll.api.exception.ServicoCepIndisponivelException;
 import med.voll.api.exception.ValidacaoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +76,30 @@ public class TratadorDeErros {
     public ResponseEntity<DadosErroValidacao> tratarErroDadosInvalidos(InvalidDataAccessApiUsageException ex) {
         return ResponseEntity.badRequest()
                 .body(new DadosErroValidacao("sort", "Parâmetro de ordenação inválido. Use o formato: campo,asc ou campo,desc"));
+    }
+
+    @ExceptionHandler(CepInvalidoException.class)
+    public ResponseEntity<DadosErroValidacao> tratarErroCepInvalido(CepInvalidoException ex) {
+        return ResponseEntity.badRequest()
+                .body(new DadosErroValidacao("cep", ex.getMessage()));
+    }
+
+    @ExceptionHandler(CepNaoEncontradoException.class)
+    public ResponseEntity<DadosErroValidacao> tratarErroCepNaoEncontrado(CepNaoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new DadosErroValidacao("cep", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ServicoCepIndisponivelException.class)
+    public ResponseEntity<DadosErroValidacao> tratarErroServicoCepIndisponivel(ServicoCepIndisponivelException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(new DadosErroValidacao("cep", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RespostaInvalidaCepException.class)
+    public ResponseEntity<DadosErroValidacao> tratarErroRespostaInvalidaCep(RespostaInvalidaCepException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(new DadosErroValidacao("cep", ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

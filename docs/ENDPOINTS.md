@@ -225,6 +225,36 @@ Perfis recomendados para ambiente profissional:
 
 ---
 
+## Endereços e CEP
+
+| Método | Endpoint | Descrição | Roles |
+|--------|----------|-----------|-------|
+| `GET` | `/enderecos/cep/{cep}` | Consultar endereço por CEP via integração com API externa | FUNCIONARIO, ADMIN |
+
+### Parâmetros e Formatos
+- Aceita CEP com 8 dígitos (`74000000`) ou com máscara (`74000-000`).
+- O backend atua como gateway seguro (ACL), injetando o header `X-API-Key` na API externa (`Consultar-Cep`) sem expor credenciais ao frontend.
+
+### Resposta de Sucesso (`HTTP 200 OK`)
+```json
+{
+  "cep": "01001-000",
+  "logradouro": "Praça da Sé",
+  "bairro": "Sé",
+  "cidade": "São Paulo",
+  "uf": "SP",
+  "complemento": "lado ímpar"
+}
+```
+
+### Códigos de Retorno e Tratamento de Erros
+- `HTTP 400 Bad Request`: Formato de CEP inválido (`[{"campo": "cep", "mensagem": "CEP inválido. Deve conter 8 dígitos numéricos."}]`).
+- `HTTP 404 Not Found`: CEP não encontrado (`[{"campo": "cep", "mensagem": "CEP não encontrado: ..."}]`).
+- `HTTP 502 Bad Gateway`: Resposta nula/incompleta da API externa de CEP ou erro de autenticação (`[{"campo": "cep", "mensagem": "Resposta inválida ou incompleta da API de CEP."}]`).
+- `HTTP 503 Service Unavailable`: Falha de conexão ou timeout na comunicação com a API de CEP (`[{"campo": "cep", "mensagem": "Serviço de consulta de CEP temporariamente indisponível."}]`).
+
+---
+
 ## Notas gerais
 
 - Todos os endpoints paginados aceitam `?page=0&size=10&sort=campo,asc`

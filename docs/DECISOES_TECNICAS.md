@@ -215,6 +215,32 @@ O seletor de médicos no cadastro de usuário (`/users`) ficava vazio porque `RO
 
 ---
 
+## Integração com Serviço Externo de CEP
+
+### Backend como Gateway Seguro e Camada Anti-Corrupção (ACL)
+
+A clínica Voll.med consome a API própria de CEP (`Consultar-Cep`).
+
+**Decisão:** O frontend nunca chama a API de CEP diretamente nem tem acesso à `CEP_API_KEY`. O backend Voll.med atua como gateway seguro expondo `GET /enderecos/cep/{cep}`, protegido por JWT para perfis `ROLE_FUNCIONARIO` e `ROLE_ADMIN`.
+
+**Por quê:**
+1. **Segurança de credenciais:** O header `X-API-Key` é injetado no backend a partir de variáveis de ambiente do servidor (`cep.api.key`), impedindo vazamento de chaves no bundle SPA ou no tráfego de rede do cliente.
+2. **Isolamento de contrato e CORS:** O frontend consome um contrato unificado do Voll.med (`DadosEnderecoCep`). CORS entre browsers e a API de CEP é irrelevante, pois a comunicação é estritamente backend-to-backend.
+3. **Desacoplamento via interface:** A comunicação externa é isolada na interface `CepClient` e implementada por `RestClientCepClient` (usando `RestClient` moderno do Spring Boot 3.5+), permitindo testes com mocks sem necessidade de servidor HTTP externo.
+
+### Rota Externa `/api/v1/ceps/{cep}/detalhes`
+
+Foi selecionado o endpoint `/api/v1/ceps/{cep}/detalhes` da API de CEP em vez de `/api/v1/ceps/{cep}` porque o endpoint básico omite o campo `complemento`.
+
+### Tolerância a Falhas e Códigos HTTP Padronizados
+
+- **Formato inválido (HTTP 400):** CEPs com formato divergente de 8 dígitos numéricos lançam `CepInvalidoException`.
+- **CEP inexistente (HTTP 404):** A API externa retorna 404, mapeado para `CepNaoEncontradoException`.
+- **Resposta incompleta ou falha de credencial (HTTP 502):** Se a API externa responder sem campos essenciais (`cidade`, `uf`) ou retornar 401/403 (chave ausente ou inválida), lança `RespostaInvalidaCepException`. Os logs do backend registram o problema sem expor o segredo, e o cliente recebe mensagem amigável de erro de integração.
+- **Indisponibilidade ou Timeout (HTTP 503):** Timeouts configurados (1,5s conexão / 3s leitura) ou falhas de rede lançam `ServicoCepIndisponivelException`.
+
+---
+
 ## Pendências conhecidas
 
 Itens identificados durante a Fase 1 do plano de correções (`GET /auth/medicos-disponiveis` e vínculo de usuário médico) que dependem de decisão de negócio ou ficaram fora do escopo do bugfix:

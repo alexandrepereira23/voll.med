@@ -30,11 +30,12 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Users, Edit, Trash2, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Edit, Trash2, CreditCard, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pacientesApi } from '@/api/pacientes';
 import { convenioPacienteApi } from '@/api/convenioPaciente';
 import { conveniosApi } from '@/api/convenios';
+import { cepApi } from '@/api/cep';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/rbac';
 import { extractApiError } from '@/lib/utils';
@@ -80,6 +81,7 @@ export default function Patients() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   // Convênios modal
   const [isConveniosOpen, setIsConveniosOpen] = useState(false);
@@ -115,6 +117,7 @@ export default function Patients() {
     : patients;
 
   const handleOpenModal = async (patient?: PacienteListagem) => {
+    setBuscandoCep(false);
     if (patient) {
       try {
         const detail: PacienteDetalhamento = await pacientesApi.get(patient.id);
@@ -141,10 +144,43 @@ export default function Patients() {
     setIsModalOpen(false);
     setEditingId(null);
     setFormData(emptyForm());
+    setBuscandoCep(false);
   };
 
   const setEndereco = (field: keyof EnderecoPayload, value: string) => {
     setFormData(prev => ({ ...prev, endereco: { ...prev.endereco, [field]: value } }));
+  };
+
+  const handleBuscarCep = async () => {
+    const cepRaw = formData.endereco.cep ?? '';
+    const cepDigitos = cepRaw.replace(/\D/g, '');
+    if (cepDigitos.length !== 8) {
+      toast.error('Informe um CEP válido com 8 dígitos para buscar.');
+      return;
+    }
+
+    setBuscandoCep(true);
+    try {
+      const dados = await cepApi.consultar(cepDigitos);
+      setFormData(prev => ({
+        ...prev,
+        endereco: {
+          ...prev.endereco,
+          cep: (dados.cep ?? cepDigitos).replace(/\D/g, ''),
+          logradouro: dados.logradouro || prev.endereco.logradouro || '',
+          bairro: dados.bairro || prev.endereco.bairro || '',
+          cidade: dados.cidade || prev.endereco.cidade || '',
+          uf: dados.uf || prev.endereco.uf || '',
+          complemento: dados.complemento || prev.endereco.complemento || '',
+          numero: prev.endereco.numero || '',
+        },
+      }));
+      toast.success('Endereço encontrado e preenchido!');
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'CEP não encontrado ou serviço indisponível.'));
+    } finally {
+      setBuscandoCep(false);
+    }
   };
 
   const handleSave = async () => {
@@ -152,14 +188,22 @@ export default function Patients() {
       toast.error('Preencha os campos obrigatórios');
       return;
     }
+
+    const cep = (formData.endereco.cep ?? '').replace(/\D/g, '');
+    if (!/^\d{8}$/.test(cep)) {
+      toast.error('CEP deve conter exatamente 8 dígitos. Exemplo: 74000000.');
+      return;
+    }
+
     setSaving(true);
     try {
+      const endereco = { ...formData.endereco, cep } as EnderecoPayload;
       if (editingId) {
         const payload: PacienteAtualizacao = {
           id: editingId,
           nome: formData.nome,
           telefone: formData.telefone,
-          endereco: formData.endereco as EnderecoPayload,
+          endereco,
         };
         await pacientesApi.update(payload);
         toast.success('Paciente atualizado com sucesso');
@@ -169,7 +213,7 @@ export default function Patients() {
           email: formData.email,
           telefone: formData.telefone,
           cpf: formData.cpf.replace(/\D/g, ''),
-          endereco: formData.endereco as EnderecoPayload,
+          endereco,
         };
         await pacientesApi.create(payload);
         toast.success('Paciente cadastrado com sucesso');
@@ -403,13 +447,38 @@ export default function Patients() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <Label className="mb-1.5 block" htmlFor="cep">CEP * (8 dígitos)</Label>
-                  <Input
-                    id="cep"
-                    value={formData.endereco.cep ?? ''}
-                    onChange={e => setEndereco('cep', e.target.value)}
-                    placeholder="74000000"
-                    maxLength={8}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="cep"
+                      value={formData.endereco.cep ?? ''}
+                      onChange={e => setEndereco('cep', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleBuscarCep();
+                        }
+                      }}
+                      placeholder="74000000"
+                      maxLength={8}
+                      inputMode="numeric"
+                      disabled={buscandoCep}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleBuscarCep}
+                      disabled={buscandoCep || !(formData.endereco.cep ?? '').replace(/\D/g, '')}
+                      className="shrink-0"
+                      title="Buscar endereço pelo CEP"
+                    >
+                      {buscandoCep ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                      ) : (
+                        <Search className="h-4 w-4 mr-1.5" />
+                      )}
+                      Buscar CEP
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <Label className="mb-1.5 block" htmlFor="uf">UF *</Label>

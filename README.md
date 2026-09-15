@@ -10,7 +10,8 @@ Sistema Fullstack para gerenciamento de clínica médica, desenvolvido a partir 
 * Backend em Spring Boot com regras de negócio avançadas
 * Frontend em React conectado à API real
 * Integração com IA clínica (Anthropic API)
-* 157 testes automatizados no backend
+* Integração com serviço próprio de consulta de CEP (Gateway seguro com X-API-Key)
+* 196 testes automatizados no backend e 29 no frontend
 * Arquitetura organizada e documentada
 
 ---
@@ -204,11 +205,16 @@ npm run dev
 ## 🧪 Testes
 
 ```bash
+# Testes do backend (Spring Boot + JUnit + MockMvc)
 cd backend
 ./mvnw test
+
+# Testes do frontend (Vitest + Testing Library)
+cd frontend
+npm test
 ```
 
-✔️ Suite atual do backend: **157 testes**
+✔️ Suite atual: **196 testes no backend** e **29 testes no frontend** (100% passando)
 
 ---
 
@@ -237,6 +243,7 @@ Perfis principais:
 
 * Backend completo até a migration `V25`
 * Frontend conectado à API real, incluindo IA clínica
+* Integração completa com serviço próprio de consulta de CEP (`Consultar-Cep`) com backend atuando como gateway seguro, proteção da `X-API-Key` e autopreenchimento no cadastro de médicos e pacientes
 * Fase 1 do plano de correções concluída: vínculo de usuário médico (`GET /auth/medicos-disponiveis`, cadastro transacional com lock pessimista) — ver `docs/DECISOES_TECNICAS.md`
 * Próximos focos sugeridos: otimização de bundle, testes E2E smoke e itens listados em "Pendências conhecidas" (`docs/DECISOES_TECNICAS.md`)
 

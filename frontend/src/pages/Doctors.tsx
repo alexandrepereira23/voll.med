@@ -29,13 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users, Edit, Trash2, Clock, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Edit, Trash2, Clock, CreditCard, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { medicosApi } from '@/api/medicos';
 import { especialidadesApi } from '@/api/especialidades';
 import { disponibilidadeApi } from '@/api/disponibilidade';
 import { medicoConveniosApi } from '@/api/medicoConvenios';
 import { conveniosApi } from '@/api/convenios';
+import { cepApi } from '@/api/cep';
 import { useAuth } from '@/hooks/useAuth';
 import { canWrite } from '@/lib/rbac';
 import { extractApiError } from '@/lib/utils';
@@ -99,6 +100,7 @@ export default function Doctors() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<FormState>(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   // Convênios modal
   const [isConveniosOpen, setIsConveniosOpen] = useState(false);
@@ -147,6 +149,7 @@ export default function Doctors() {
     : doctors;
 
   const handleOpenModal = async (doctor?: MedicoListagem) => {
+    setBuscandoCep(false);
     if (doctor) {
       try {
         const detail: MedicoDetalhamento = await medicosApi.get(doctor.id);
@@ -176,10 +179,43 @@ export default function Doctors() {
     setIsModalOpen(false);
     setEditingId(null);
     setFormData(emptyForm());
+    setBuscandoCep(false);
   };
 
   const setEndereco = (field: keyof EnderecoPayload, value: string) => {
     setFormData(prev => ({ ...prev, endereco: { ...prev.endereco, [field]: value } }));
+  };
+
+  const handleBuscarCep = async () => {
+    const cepRaw = formData.endereco.cep ?? '';
+    const cepDigitos = cepRaw.replace(/\D/g, '');
+    if (cepDigitos.length !== 8) {
+      toast.error('Informe um CEP válido com 8 dígitos para buscar.');
+      return;
+    }
+
+    setBuscandoCep(true);
+    try {
+      const dados = await cepApi.consultar(cepDigitos);
+      setFormData(prev => ({
+        ...prev,
+        endereco: {
+          ...prev.endereco,
+          cep: (dados.cep ?? cepDigitos).replace(/\D/g, ''),
+          logradouro: dados.logradouro || prev.endereco.logradouro || '',
+          bairro: dados.bairro || prev.endereco.bairro || '',
+          cidade: dados.cidade || prev.endereco.cidade || '',
+          uf: dados.uf || prev.endereco.uf || '',
+          complemento: dados.complemento || prev.endereco.complemento || '',
+          numero: prev.endereco.numero || '',
+        },
+      }));
+      toast.success('Endereço encontrado e preenchido!');
+    } catch (err: any) {
+      toast.error(extractApiError(err, 'CEP não encontrado ou serviço indisponível.'));
+    } finally {
+      setBuscandoCep(false);
+    }
   };
 
   const handleSave = async () => {
@@ -527,14 +563,38 @@ export default function Doctors() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <Label className="mb-1.5 block" htmlFor="cep">CEP * (8 dígitos)</Label>
-                  <Input
-                    id="cep"
-                    value={formData.endereco.cep ?? ''}
-                    onChange={e => setEndereco('cep', e.target.value.replace(/\D/g, '').slice(0, 8))}
-                    placeholder="74000000"
-                    maxLength={8}
-                    inputMode="numeric"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="cep"
+                      value={formData.endereco.cep ?? ''}
+                      onChange={e => setEndereco('cep', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleBuscarCep();
+                        }
+                      }}
+                      placeholder="74000000"
+                      maxLength={8}
+                      inputMode="numeric"
+                      disabled={buscandoCep}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleBuscarCep}
+                      disabled={buscandoCep || !(formData.endereco.cep ?? '').replace(/\D/g, '')}
+                      className="shrink-0"
+                      title="Buscar endereço pelo CEP"
+                    >
+                      {buscandoCep ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1.5" />
+                      ) : (
+                        <Search className="h-4 w-4 mr-1.5" />
+                      )}
+                      Buscar CEP
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <Label className="mb-1.5 block" htmlFor="uf">UF *</Label>
