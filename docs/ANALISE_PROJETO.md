@@ -92,7 +92,6 @@ A integracao com o `Consultar-Cep` foi implementada como gateway backend:
 
 ## Riscos Tecnicos Atuais
 
-- `npm audit` reporta vulnerabilidades pendentes no frontend (3 moderadas, 2 altas).
 - Ainda nao ha E2E smoke tests cobrindo browser real contra a stack.
 - `ROLE_FUNCIONARIO` possui leitura operacional de prontuarios, prescricoes e atestados; e uma decisao sensivel que precisa revisao de minimo acesso.
 - O lock pessimista de vinculo medico-usuario nao tem teste de concorrencia real com MySQL.
@@ -105,7 +104,6 @@ A integracao com o `Consultar-Cep` foi implementada como gateway backend:
 As pendencias centralizadas estao em `docs/BACKLOG.md`. Principais itens:
 
 - E2E smoke tests.
-- Tratamento das vulnerabilidades npm.
 - Revisao de acesso de funcionarios a dados clinicos sensiveis.
 - Ciclo completo da consulta com estados adicionais.
 - Otimizacao/code splitting do frontend.
@@ -113,13 +111,11 @@ As pendencias centralizadas estao em `docs/BACKLOG.md`. Principais itens:
 
 ## Proximas Fases Recomendadas
 
-1. Finalizar atualizacao documental e manter `docs/BACKLOG.md` como fonte de pendencias.
-2. Implementar E2E smoke tests para login, navegacao, cadastros, CEP e agendamento.
-3. Corrigir ou mitigar vulnerabilidades do `npm audit`.
-4. Otimizar bundle/code splitting do frontend.
-5. Definir e implementar o ciclo completo de vida da consulta.
-6. Reavaliar permissoes sensiveis de funcionario sobre dados clinicos.
-7. Evoluir IA, auditoria, relatorios e metricas administrativas.
+1. Implementar E2E smoke tests para login, navegacao, cadastros, CEP e agendamento.
+2. Otimizar bundle/code splitting do frontend.
+3. Definir e implementar o ciclo completo de vida da consulta.
+4. Reavaliar permissoes sensiveis de funcionario sobre dados clinicos.
+5. Evoluir IA, auditoria, relatorios e metricas administrativas.
 
 ## Conclusao
 

@@ -8,7 +8,7 @@ Validado nesta revisao documental:
 
 - Backend: **196 testes passando** com `./mvnw test` em `backend/`.
 - Frontend: **29 testes passando** com `npm test` em `frontend/`.
-- Frontend audit: `npm audit` reporta **5 vulnerabilidades**: 3 moderadas e 2 altas.
+- Frontend audit: **0 vulnerabilidades** reportadas em `npm audit` (corrigido com seguranca via `npm audit fix`).
 
 ## Comandos
 

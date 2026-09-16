@@ -64,45 +64,33 @@ Este documento organiza as fases do projeto. Pendencias detalhadas e melhorias f
 - Frontend em Vercel.
 - CORS configurado para ambientes locais e Vercel.
 
-## Fase Atual — Documentacao e Backlog
+### 8. Documentacao, Backlog e Hardening de Dependencias
 
-Objetivo: atualizar a documentacao geral para refletir o estado atual do sistema e centralizar pendencias reais em `docs/BACKLOG.md`.
+- Atualizacao completa da documentacao (`README.md`, `docs/ENDPOINTS.md`, `docs/TESTES.md`, `docs/ANALISE_PROJETO.md`, `docs/PLANEJAMENTO.md`, `docs/DECISOES_TECNICAS.md`, `docs/REGRAS_DE_NEGOCIO.md`).
+- Marcacao de `docs/EVOLUCAO_ARQUITETURA.md` como documento historico.
+- Criacao de `docs/BACKLOG.md` como fonte centralizada de pendencias reais.
+- Mitigacao e correcao das 5 vulnerabilidades do frontend via `npm audit fix` (0 vulnerabilidades remanescentes).
 
-Entregas desta fase:
+## Fase Atual — E2E Smoke Tests
 
-- Atualizar `README.md`.
-- Atualizar `docs/ENDPOINTS.md`.
-- Atualizar `docs/TESTES.md`.
-- Atualizar `docs/ANALISE_PROJETO.md`.
-- Atualizar `docs/PLANEJAMENTO.md`.
-- Atualizar `docs/DECISOES_TECNICAS.md`.
-- Atualizar `docs/REGRAS_DE_NEGOCIO.md`.
-- Marcar `docs/EVOLUCAO_ARQUITETURA.md` como documento historico.
-- Criar `docs/BACKLOG.md`.
+Objetivo: implementar testes ponta a ponta (E2E) cobrindo fluxos criticos da aplicacao com navegador e stack local integrada.
+
+Entregas prioritarias desta fase:
+
+- Login e navegacao por perfil (`ROLE_ADMIN`, `ROLE_FUNCIONARIO`, `ROLE_MEDICO`).
+- Cadastro de medico com autopreenchimento de endereco via CEP.
+- Cadastro de paciente com autopreenchimento de endereco via CEP.
+- Agendamento de consulta com validacao de horario e disponibilidade.
 
 ## Proximas Fases Sugeridas
 
-### 1. Atualizacao Documental Continua
-
-- Manter `README.md`, `docs/ENDPOINTS.md`, `docs/TESTES.md` e `docs/BACKLOG.md` como fontes atualizadas.
-- Evitar duplicar pendencias em varios documentos; referenciar o backlog.
-
-### 2. E2E Smoke Tests
-
-- Login.
-- Navegacao principal.
-- Cadastro de medico.
-- Cadastro de paciente.
-- Busca de CEP nos formularios.
-- Agendamento de consulta.
-
-### 3. Otimizacao e Code Splitting do Frontend
+### 1. Otimizacao e Code Splitting do Frontend
 
 - Avaliar lazy loading de rotas.
 - Reduzir chunks grandes do build Vite.
 - Medir impacto com `npm run build`.
 
-### 4. Ciclo Completo da Consulta
+### 2. Ciclo Completo da Consulta
 
 Estados sugeridos:
 
@@ -115,20 +103,20 @@ Estados sugeridos:
 - Paciente ausente.
 - Reagendada.
 
-### 5. Permissoes Sensiveis
+### 3. Permissoes Sensiveis
 
 - Definir se `ROLE_FUNCIONARIO` pode ver prontuarios, prescricoes e atestados completos.
 - Avaliar visoes resumidas sem conteudo clinico sensivel.
 - Garantir auditoria em todo acesso sensivel.
 
-### 6. UX e Auditoria
+### 4. UX e Auditoria
 
 - Melhorar estados de loading/erro.
 - Criar tela dedicada de acesso negado.
 - Ampliar filtros e listagens.
 - Evoluir relatorios e trilhas de auditoria.
 
-### 7. Evolucoes Futuras da IA
+### 5. Evolucoes Futuras da IA
 
 - Melhorar prompts e avaliacao de qualidade.
 - Adicionar limites, observabilidade e tratamento de indisponibilidade.

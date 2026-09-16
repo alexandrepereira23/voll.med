@@ -37,19 +37,6 @@ Definir decisao final sobre `ROLE_FUNCIONARIO` em dados sensiveis:
 - Atestados.
 - Dados clinicos sensiveis.
 - Necessidade de visao resumida operacional.
-- Auditoria obrigatoria em toda leitura sensivel.
-
-### Vulnerabilidades npm
-
-Status atual de `npm audit`:
-
-- 5 vulnerabilidades reportadas.
-- 3 moderadas.
-- 2 altas.
-- Correcao sugerida pelo npm: `npm audit fix`.
-
-Acao pendente: avaliar impacto das atualizacoes, aplicar correcao em branch propria e rodar `npm test`, `npm run check`, `npm run build` e novo `npm audit`.
-
 ### Politica de Usuario Medico com Medico Inativado
 
 Definir se usuario `ROLE_MEDICO` deve continuar autenticando quando o medico vinculado for inativado.
@@ -151,3 +138,4 @@ Opcionalmente bloquear login, bloquear apenas funcionalidades assistenciais ou e
 - IA clinica no backend e frontend.
 - Auditoria LGPD para prontuarios, prescricoes e atestados.
 - Especialidades como tabela em vez de enum fixo.
+- Vulnerabilidades npm no frontend corrigidas via `npm audit fix` (0 vulnerabilidades remanescentes; testes, typecheck e build validados).
