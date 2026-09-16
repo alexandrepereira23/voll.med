@@ -156,7 +156,6 @@ A suite atual usa H2 para contexto Spring e mocks para clientes externos. A inte
 - Cobrir agendamento de consulta via UI.
 - Cobrir fluxo completo de consulta quando os estados adicionais forem implementados.
 - Avaliar teste de concorrencia real para vinculo medico-usuario usando MySQL/Testcontainers ou stack Docker local.
-- Tratar vulnerabilidades reportadas por `npm audit` e reexecutar auditoria.
 
 ## Troubleshooting Docker Local
 

@@ -174,7 +174,7 @@ Estado validado nesta revisao documental:
 
 - `./mvnw test`: 196 testes passando.
 - `npm test`: 29 testes passando.
-- `npm audit`: 5 vulnerabilidades reportadas (3 moderadas, 2 altas), pendentes de tratamento.
+- `npm audit`: 0 vulnerabilidades (corrigido com seguranca via `npm audit fix`).
 
 ## Perfis de Acesso
 

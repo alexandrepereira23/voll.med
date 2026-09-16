@@ -69,7 +69,7 @@ Este documento organiza as fases do projeto. Pendencias detalhadas e melhorias f
 - Atualizacao completa da documentacao (`README.md`, `docs/ENDPOINTS.md`, `docs/TESTES.md`, `docs/ANALISE_PROJETO.md`, `docs/PLANEJAMENTO.md`, `docs/DECISOES_TECNICAS.md`, `docs/REGRAS_DE_NEGOCIO.md`).
 - Marcacao de `docs/EVOLUCAO_ARQUITETURA.md` como documento historico.
 - Criacao de `docs/BACKLOG.md` como fonte centralizada de pendencias reais.
-- Mitigacao e correcao das 5 vulnerabilidades do frontend via `npm audit fix` (0 vulnerabilidades remanescentes).
+- Mitigacao e correcao das vulnerabilidades do frontend via `npm audit fix` (0 vulnerabilidades remanescentes).
 
 ## Fase Atual — E2E Smoke Tests
 

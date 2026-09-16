@@ -217,4 +217,4 @@ Backend completo até V25. Frontend conectado à API real, incluindo IA clínica
 
 Corrigido o bloqueio de cadastro de usuário médico: `ROLE_ADMIN` recebia `403` de `GET /medicos` (endpoint operacional) e o frontend descartava o erro silenciosamente, deixando o seletor de médicos sempre vazio. Solução: endpoint dedicado `GET /auth/medicos-disponiveis` (só ADMIN, só médicos ativos sem usuário), `UsuarioService` com `@Transactional` e bloqueio pessimista (`findByIdComBloqueio`) no vínculo médico↔usuário, e estados explícitos de carregando/vazio/erro/retry em `Users.tsx`. Ver `docs/DECISOES_TECNICAS.md` para detalhes e pendências.
 
-Dependência frontend com vulnerabilidade conhecida: `npm audit` reporta 1 alta em `nanoid` (transitiva); correção não aplicada nesta fase por estar fora do escopo do bugfix.
+Vulnerabilidades npm do frontend: resolvidas com segurança via `npm audit fix` (sem `--force`), resultando em 0 vulnerabilidades (audit zerado, testes e build validados).
