@@ -10,7 +10,7 @@ Sistema fullstack para gestao de clinica medica, com backend Spring Boot, fronte
 - Autenticacao e autorizacao por JWT/RBAC.
 - Docker Compose para MySQL, backend e frontend local.
 - Integracao de CEP via gateway backend, sem expor `X-API-Key` ao navegador.
-- Deploy atual com backend no Railway e frontend no Vercel.
+- Frontend publicado na Vercel; migração das APIs para VPS documentada em [`docs/DEPLOY_VPS.md`](docs/DEPLOY_VPS.md).
 - Suites automatizadas validadas: 196 testes backend e 29 testes frontend.
 
 ## Funcionalidades Implementadas
@@ -57,7 +57,7 @@ Sistema fullstack para gestao de clinica medica, com backend Spring Boot, fronte
 ### Infraestrutura
 
 - Docker e Docker Compose.
-- Backend publicado no Railway.
+- Backend e integração CEP em migração para VPS com Docker Compose e Caddy.
 - Frontend publicado no Vercel.
 - MySQL local exposto por padrao em `localhost:3307`.
 

@@ -89,6 +89,7 @@ public class SecurityConfigurations {
                 "http://localhost:5174",
                 "http://127.0.0.1:5173",
                 "https://voll-med.vercel.app",
+                "https://vollmed.usenexora.online",
                 "https://voll-med-alexandre-henriques-projects-7963356e.vercel.app",
                 "https://voll-med-git-main-alexandre-henriques-projects-7963356e.vercel.app"
         ));
