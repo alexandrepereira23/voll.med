@@ -1,52 +1,67 @@
-# Voll.med no VPS
+# Deploy das APIs na VPS
 
-Este pacote adiciona um Compose de produção com Caddy e um workflow de CI/CD.
-O Compose de desenvolvimento (`docker-compose.yml`) continua separado.
+Os dois frontends continuam na Vercel. A VPS executa as APIs, o MySQL do Voll.med e o Caddy, que termina o HTTPS para as duas APIs.
 
-## O que fica público
+| Host | Destino |
+|---|---|
+| `vollmed.usenexora.online` | Frontend Voll.med na Vercel |
+| `consulta-cep.usenexora.online` | Frontend Consultar-Cep na Vercel |
+| `api-vollmed.usenexora.online` | Serviço `backend` no Compose |
+| `api-cep.usenexora.online` | Serviço `consultacep` no Compose |
 
-- Caddy nas portas TCP 80 e 443.
-- Caddy encaminha `/api/*` para o backend e o restante para o frontend.
-- MySQL, backend e frontend não publicam portas no host; conversam pela rede privada do Compose.
-- Os volumes `mysql_data`, `caddy_data` e `caddy_config` persistem entre atualizações.
+Crie registros A para os dois hosts `api-*`, apontando para o IP público da VPS. Configure os dois domínios dos painéis na Vercel e use os destinos CNAME/records mostrados em cada projeto. Libere as portas TCP 80 e 443 na VPS e no firewall do provedor.
 
-## Instalação no servidor
+## Preparar a VPS
 
-Copie `docker-compose.prod.yml`, a pasta `deploy/` e `.env.production.example` para a raiz do clone (`/opt/vollmed/app`). Crie o arquivo secreto sem adicioná-lo ao Git:
+Instale Docker Engine com o plugin Docker Compose para a distribuição Linux da VPS. Crie um usuário de deploy com acesso ao Docker e autenticação SSH por chave. Os comandos abaixo presumem que ambos os repositórios públicos serão clonados em `/opt/vollmed/app` e `/opt/vollmed/cep`:
+
+```bash
+sudo mkdir -p /opt/vollmed
+sudo chown "$USER":"$USER" /opt/vollmed
+git clone https://github.com/alexandrepereira23/voll.med.git /opt/vollmed/app
+git clone https://github.com/alexandrepereira23/Consultar-Cep.git /opt/vollmed/cep
+cp /opt/vollmed/app/.env.production.example /opt/vollmed/app/.env
+chmod 600 /opt/vollmed/app/.env
+```
+
+Edite `/opt/vollmed/app/.env`, substitua os marcadores por valores fortes e configure:
+
+- Gere valores independentes para `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD` e `JWT_SECRET` (por exemplo, com `openssl rand -hex 32`). Defina também `ADMIN_PASSWORD`.
+
+- `VOLL_MED_API_DOMAIN=api-vollmed.usenexora.online`
+- `CEP_API_DOMAIN=api-cep.usenexora.online`
+- `CEP_API_KEY`: uma chave forte compartilhada somente entre as duas APIs
+- `CEP_CORS_ORIGENS_PERMITIDAS`: domínio público do painel CEP e seu domínio Vercel estável, separados por vírgula
+- `CEP_BACKEND_CONTEXT=../cep/backend`
+
+Use a mesma chave em `CEP_API_KEY` e na variável `API_KEY_VALOR` do serviço Consultar-Cep. O backend Voll.med chama o CEP internamente por `http://consultacep:8080`, dentro da rede Docker. Não publique a porta do MySQL nem das APIs diretamente no host.
+
+Faça o primeiro deploy manual depois de configurar o DNS e o arquivo `.env`:
 
 ```bash
 cd /opt/vollmed/app
-cp .env.production.example .env
-chmod 600 .env
-openssl rand -hex 32
-```
-
-Gere valores independentes para `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD` e `JWT_SECRET` e substitua os marcadores em `.env`. Defina também `ADMIN_PASSWORD` e confira `DOMAIN`. Não envie esses valores no chat nem os adicione ao GitHub.
-
-Confira a configuração antes de iniciar:
-
-```bash
 docker compose --env-file .env -f docker-compose.prod.yml config --quiet
-docker compose --env-file .env -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env -f docker-compose.prod.yml up -d --build --remove-orphans
 docker compose --env-file .env -f docker-compose.prod.yml ps
-docker compose --env-file .env -f docker-compose.prod.yml logs --tail=100 caddy backend
 ```
 
-O endereço DNS precisa apontar para o IP da VPS e as portas 80 e 443 precisam estar liberadas no UFW e no firewall da Contabo. Caddy solicita e renova o certificado HTTPS automaticamente.
+O Caddy solicita os certificados HTTPS automaticamente quando os dois registros DNS já apontam para a VPS e as portas 80/443 estão acessíveis.
 
-## GitHub Actions
+## Deploy automático pelo GitHub Actions
 
-Adicione estes Actions secrets ao repositório:
+Configure estes segredos no ambiente GitHub `production` de **cada repositório**:
 
-- `DEPLOY_HOST`: `13.140.161.188`
-- `DEPLOY_USER`: `alexandre`
-- `DEPLOY_SSH_KEY`: chave privada exclusiva para deploy; a chave pública correspondente deve estar em `~/.ssh/authorized_keys` no servidor.
-- `DEPLOY_KNOWN_HOSTS`: linha de host obtida por `ssh-keyscan`, depois de comparar o fingerprint exibido por `ssh-keygen -lf` com o fingerprint confiável do servidor.
+- `DEPLOY_HOST`: IP ou hostname SSH da VPS
+- `DEPLOY_USER`: usuário de deploy
+- `DEPLOY_SSH_KEY`: chave privada SSH autorizada para esse usuário
+- `DEPLOY_KNOWN_HOSTS`: chave de host SSH da VPS verificada por um canal confiável
 
-Depois de adicionar os arquivos ao repositório e fazer push para `main`, o workflow roda os testes e builds. Se todos passarem, conecta por SSH e atualiza a stack. O deploy assume que o clone do servidor está em `/opt/vollmed/app` e que `.env` já foi configurado lá.
+No projeto Voll.med da Vercel, defina `VITE_API_BASE_URL=https://api-vollmed.usenexora.online/api` no ambiente Production. O painel Consultar-Cep usa `https://api-cep.usenexora.online/api/v1` no build de produção.
 
-## Primeiro deploy
+Push na branch `main` do Consultar-Cep atualiza `/opt/vollmed/cep` e reconstrói somente `consultacep`. Push na branch `main` do Voll.med atualiza `/opt/vollmed/app` e reconcilia toda a stack. Nenhum segredo deve ser colocado no código ou enviado pelo chat.
 
-Faça o primeiro deploy manual no servidor para validar `.env`, DNS, firewall e TLS. Configure as chaves de CI/CD e publique o workflow depois. O workflow pode ser executado manualmente na aba **Actions** ou em todo push futuro para `main`.
+## Dados do Railway
 
-Não use `docker compose down -v`: isso apaga os volumes, inclusive os dados do MySQL.
+O Compose cria um volume MySQL novo. Antes de apontar o tráfego de produção para a VPS, exporte o banco atual do Railway e restaure-o no MySQL da VPS. As migrations Flyway atualizam o schema, mas não transferem os dados existentes.
+
+Não use `docker compose down -v`: isso apaga os volumes persistentes, inclusive os dados do MySQL e os certificados do Caddy.

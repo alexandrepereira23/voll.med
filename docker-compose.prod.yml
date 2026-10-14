@@ -31,33 +31,33 @@ services:
       ADMIN_LOGIN: ${ADMIN_LOGIN:?ADMIN_LOGIN is required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CEP_API_KEY: ${CEP_API_KEY:-}
-      CEP_API_BASE_URL: ${CEP_API_BASE_URL:-}
+      CEP_API_KEY: ${CEP_API_KEY:?CEP_API_KEY is required}
+      CEP_API_BASE_URL: http://consultacep:8080
       SPRINGDOC_SWAGGER_UI_ENABLED: "false"
       SPRINGDOC_API_DOCS_ENABLED: "false"
       SERVER_FORWARD_HEADERS_STRATEGY: framework
     depends_on:
       db:
         condition: service_healthy
+      consultacep:
+        condition: service_started
 
-  frontend:
+  consultacep:
     build:
-      context: ./frontend
+      context: ${CEP_BACKEND_CONTEXT:-../cep/backend}
     restart: unless-stopped
-    depends_on:
-      - backend
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8080
+      API_KEY_VALOR: ${CEP_API_KEY:?CEP_API_KEY is required}
+      CORS_ORIGENS_PERMITIDAS: ${CEP_CORS_ORIGENS_PERMITIDAS:?CEP_CORS_ORIGENS_PERMITIDAS is required}
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     environment:
-      DOMAIN: ${DOMAIN:?DOMAIN is required}
+      VOLL_MED_API_DOMAIN: ${VOLL_MED_API_DOMAIN:?VOLL_MED_API_DOMAIN is required}
+      CEP_API_DOMAIN: ${CEP_API_DOMAIN:?CEP_API_DOMAIN is required}
     ports:
       - "80:80"
       - "443:443"
@@ -66,9 +66,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      frontend:
-        condition: service_healthy
       backend:
+        condition: service_started
+      consultacep:
         condition: service_started
 
 volumes:
